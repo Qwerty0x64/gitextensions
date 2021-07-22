@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using ICSharpCode.TextEditor.Document;
 
@@ -21,7 +20,7 @@ namespace GitUI.Editor.Diff
 
         public List<ISegment> GetLinesStartingWith(IDocument document, ref int beginIndex, string[] prefixStrs, ref bool found)
         {
-            var result = new List<ISegment>();
+            List<ISegment> result = new();
 
             while (beginIndex < document.TotalNumberOfLines)
             {

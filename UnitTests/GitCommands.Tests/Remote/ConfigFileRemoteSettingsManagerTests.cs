@@ -43,7 +43,7 @@ namespace GitCommandsTests.Remote
         [Test]
         public void LoadRemotes_should_not_populate_remotes_if_none()
         {
-            _module.GetRemoteNames().Returns(x => Enumerable.Empty<string>());
+            _module.GetRemoteNames().Returns(x => Array.Empty<string>());
 
             var remotes = _remotesManager.LoadRemotes(true);
 
@@ -73,7 +73,7 @@ namespace GitCommandsTests.Remote
             const string remoteName1 = "name1";
             const string remoteName2 = "name2";
             _module.GetRemoteNames().Returns(x => new[] { null, "", " ", "    ", remoteName1, "\t" });
-            var sections = new List<IConfigSection> { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{remoteName2}", true) };
+            List<IConfigSection> sections = new() { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{remoteName2}", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
             var remotes = _remotesManager.LoadRemotes(loadDisabled);
@@ -98,13 +98,13 @@ namespace GitCommandsTests.Remote
         public void RemoveRemote_should_throw_if_remote_is_null()
         {
             ((Action)(() => _remotesManager.RemoveRemote(null))).Should().Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: remote");
+                .WithMessage("Value cannot be null. (Parameter 'remote')");
         }
 
         [Test]
         public void RemoveRemote_success()
         {
-            var remote = new ConfigFileRemote { Name = "bla" };
+            ConfigFileRemote remote = new() { Name = "bla" };
 
             _remotesManager.RemoveRemote(remote);
 
@@ -115,11 +115,11 @@ namespace GitCommandsTests.Remote
         public void SaveRemote_should_throw_if_remoteName_is_null_or_empty()
         {
             ((Action)(() => _remotesManager.SaveRemote(null, null, "b", "c", "d"))).Should().Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
+                .WithMessage("Value cannot be null. (Parameter 'remoteName')");
             ((Action)(() => _remotesManager.SaveRemote(null, "", "b", "c", "d"))).Should().Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
+                .WithMessage("Value cannot be null. (Parameter 'remoteName')");
             ((Action)(() => _remotesManager.SaveRemote(null, "  ", "b", "c", "d"))).Should().Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
+                .WithMessage("Value cannot be null. (Parameter 'remoteName')");
         }
 
         [Test]
@@ -162,7 +162,7 @@ namespace GitCommandsTests.Remote
             const string remoteName = "a";
             const string remoteUrl = "b";
             const string output = "yes!";
-            var gitRemote = new ConfigFileRemote { Name = "old", Url = remoteUrl };
+            ConfigFileRemote gitRemote = new() { Name = "old", Url = remoteUrl };
             _module.RenameRemote(Arg.Any<string>(), Arg.Any<string>()).Returns(x => output);
 
             var result = _remotesManager.SaveRemote(gitRemote, remoteName, remoteUrl, null, null);
@@ -178,7 +178,7 @@ namespace GitCommandsTests.Remote
             const string remoteName = "a";
             const string remoteUrl = "b";
             const string output = "yes!";
-            var gitRemote = new ConfigFileRemote { Name = "old", Url = "old" };
+            ConfigFileRemote gitRemote = new() { Name = "old", Url = "old" };
             _module.RenameRemote(Arg.Any<string>(), Arg.Any<string>()).Returns(x => output);
 
             var result = _remotesManager.SaveRemote(gitRemote, remoteName, remoteUrl, null, null);
@@ -194,7 +194,7 @@ namespace GitCommandsTests.Remote
         [TestCase("a", "b", "c")]
         public void SaveRemote_should_update_settings(string remoteUrl, string remotePushUrl, string remotePuttySshKey)
         {
-            var remote = new ConfigFileRemote { Name = "bla", Url = remoteUrl };
+            ConfigFileRemote remote = new() { Name = "bla", Url = remoteUrl };
 
             _remotesManager.SaveRemote(remote, remote.Name, remoteUrl, remotePushUrl, remotePuttySshKey);
 
@@ -220,7 +220,7 @@ namespace GitCommandsTests.Remote
         public void SetRemoteState_should_throw_if_remote_is_null()
         {
             ((Action)(() => _remotesManager.ToggleRemoteState(null, false))).Should().Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: remoteName");
+                .WithMessage("Value cannot be null. (Parameter 'remoteName')");
         }
 
         [Test]
@@ -239,7 +239,7 @@ namespace GitCommandsTests.Remote
         [TestCase("name2", true)]
         public void SetRemoteState_should_call_ToggleRemoteState(string remoteName, bool remoteDisabled)
         {
-            var sections = new List<IConfigSection> { new ConfigSection("-remote.name1", true), new ConfigSection("remote.name2", true) };
+            List<IConfigSection> sections = new() { new ConfigSection("-remote.name1", true), new ConfigSection("remote.name2", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
             _remotesManager.ToggleRemoteState(remoteName, remoteDisabled);
@@ -260,7 +260,7 @@ namespace GitCommandsTests.Remote
                 CreateSubstituteRef("f6323b8e80f96dff017dd14bdb28a576556adab4", "refs/heads/local", ""),
             };
 
-            _module.GetRefs().ReturnsForAnyArgs(refs);
+            _module.GetRefs(RefsFilter.NoFilter).ReturnsForAnyArgs(refs);
 
             _remotesManager.ConfigureRemotes("origin");
 
@@ -276,7 +276,7 @@ namespace GitCommandsTests.Remote
             {
                 CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", "refs/remotes/origin/develop", "origin"),
             };
-            _module.GetRefs().ReturnsForAnyArgs(refs);
+            _module.GetRefs(RefsFilter.NoFilter).ReturnsForAnyArgs(refs);
 
             _remotesManager.ConfigureRemotes("origin");
 
@@ -293,7 +293,7 @@ namespace GitCommandsTests.Remote
                 CreateSubstituteRef("f6323b8e80f96dff017dd14bdb28a576556adab4", "refs/heads/develop", ""),
                 CreateSubstituteRef("ddca5a9cdc3ab10e042ae6cf5f8da2dd25c4b75f", "refs/remotes/origin/master", "origin"),
             };
-            _module.GetRefs().ReturnsForAnyArgs(refs);
+            _module.GetRefs(RefsFilter.NoFilter).ReturnsForAnyArgs(refs);
 
             _remotesManager.ConfigureRemotes("origin");
 
@@ -310,7 +310,7 @@ namespace GitCommandsTests.Remote
             {
                 CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", "refs/tags/local-tag", ""),
             };
-            _module.GetRefs().ReturnsForAnyArgs(refs);
+            _module.GetRefs(RefsFilter.NoFilter).ReturnsForAnyArgs(refs);
 
             _remotesManager.ConfigureRemotes("origin");
 
@@ -328,7 +328,7 @@ namespace GitCommandsTests.Remote
                 CreateSubstituteRef("f6323b8e80f96dff017dd14bdb28a576556adab4", "refs/heads/develop", ""),
                 CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", "refs/remotes/origin/develop", "origin"),
             };
-            _module.GetRefs().ReturnsForAnyArgs(refs);
+            _module.GetRefs(RefsFilter.NoFilter).ReturnsForAnyArgs(refs);
 
             _remotesManager.ConfigureRemotes("origin");
             var mergeWith = "develop";
@@ -360,7 +360,7 @@ namespace GitCommandsTests.Remote
 
             _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
 
-            var sections = new List<IConfigSection> { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
+            List<IConfigSection> sections = new() { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
             var disabledRemotes = _remotesManager.GetDisabledRemotes();
@@ -380,7 +380,7 @@ namespace GitCommandsTests.Remote
 
             _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
 
-            var sections = new List<IConfigSection> { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
+            List<IConfigSection> sections = new() { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
             var enabledRemoteNames = _remotesManager.GetEnabledRemoteNames();
@@ -402,9 +402,9 @@ namespace GitCommandsTests.Remote
                 CreateSubstituteRef("02e10a13e06e7562f7c3c516abb2a0e1a0c0dd90", $"refs/remotes/{enabledRemoteNameWithBranches}/develop", $"{enabledRemoteNameWithBranches}"),
             };
 
-            _module.GetRefs().ReturnsForAnyArgs(refs);
+            _module.GetRefs(RefsFilter.NoFilter).ReturnsForAnyArgs(refs);
 
-            var sections = new List<IConfigSection> { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
+            List<IConfigSection> sections = new() { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
             var enabledRemotesNoBranches = _remotesManager.GetEnabledRemoteNamesWithoutBranches();
@@ -420,7 +420,7 @@ namespace GitCommandsTests.Remote
 
             _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
 
-            var sections = new List<IConfigSection> { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
+            List<IConfigSection> sections = new() { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
             Assert.IsTrue(_remotesManager.EnabledRemoteExists(enabledRemoteName));
@@ -435,7 +435,7 @@ namespace GitCommandsTests.Remote
 
             _module.GetRemoteNames().Returns(x => new[] { enabledRemoteName, });
 
-            var sections = new List<IConfigSection> { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
+            List<IConfigSection> sections = new() { new ConfigSection($"{ConfigFileRemoteSettingsManager.DisabledSectionPrefix}{ConfigFileRemoteSettingsManager.SectionRemote}.{disabledRemoteName}", true) };
             _configFile.GetConfigSections().Returns(x => sections);
 
             Assert.IsTrue(_remotesManager.DisabledRemoteExists(disabledRemoteName));
@@ -447,8 +447,8 @@ namespace GitCommandsTests.Remote
             [Test]
             public void ToggleRemoteState_should_not_fail_if_activate_repeatedly()
             {
-                using var helper = new GitModuleTestHelper();
-                var manager = new ConfigFileRemoteSettingsManager(() => helper.Module);
+                using GitModuleTestHelper helper = new();
+                ConfigFileRemoteSettingsManager manager = new(() => helper.Module);
 
                 const string remoteName = "active";
                 helper.Module.AddRemote(remoteName, "http://localhost/remote/repo.git");
@@ -461,8 +461,8 @@ namespace GitCommandsTests.Remote
             [Test]
             public void ToggleRemoteState_should_not_fail_if_deactivate_repeatedly()
             {
-                using var helper = new GitModuleTestHelper();
-                var manager = new ConfigFileRemoteSettingsManager(() => helper.Module);
+                using GitModuleTestHelper helper = new();
+                ConfigFileRemoteSettingsManager manager = new(() => helper.Module);
 
                 const string remoteName = "active";
                 helper.Module.AddRemote(remoteName, "http://localhost/remote/repo.git");

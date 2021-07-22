@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,7 +31,7 @@ namespace GitExtensions.UITests.Script
 
         // perf optimisation: get hold of the static ScriptRunner.RunScript method for test invocations
         // we could have used TestAccessor, but it would involve more code.
-        private static MethodInfo s_miRunScript = typeof(ScriptRunner).GetMethod("RunScriptInternal", BindingFlags.NonPublic | BindingFlags.Static);
+        private static readonly MethodInfo _miRunScript = typeof(ScriptRunner).GetMethod("RunScriptInternal", BindingFlags.NonPublic | BindingFlags.Static);
 
         // Created once for each test
         private GitUICommands _uiCommands;
@@ -59,7 +59,7 @@ namespace GitExtensions.UITests.Script
             _exampleScript.AskConfirmation = false; // avoid any dialogs popping up
             _exampleScript.RunInBackground = true; // avoid any dialogs popping up
 
-            if (s_miRunScript is null)
+            if (_miRunScript is null)
             {
                 throw new InvalidOperationException();
             }
@@ -130,7 +130,7 @@ namespace GitExtensions.UITests.Script
             _exampleScript.Command = "cmd";
             _exampleScript.Arguments = "/c echo {cHash}";
 
-            var revision = new GitRevision(ObjectId.IndexId);
+            GitRevision revision = new(ObjectId.IndexId);
             _module.GetRevision(shortFormat: true, loadRefs: true).Returns(x => revision);
 
             var result = ScriptRunner.RunScript(null, _module, _keyOfExampleScript, uiCommands: null, revisionGrid: null);
@@ -217,7 +217,7 @@ namespace GitExtensions.UITests.Script
         {
             try
             {
-                var result = (CommandStatus)s_miRunScript.Invoke(null,
+                var result = (CommandStatus)_miRunScript.Invoke(null,
                                                                  new object[]
                                                                  {
                                                                      owner,

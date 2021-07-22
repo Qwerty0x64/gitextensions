@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Composition;
+using CommonTestUtils.MEF;
 using FluentAssertions;
 using GitCommands;
 using GitCommands.Config;
+using GitCommands.UserRepositoryHistory;
 using GitUI.Script;
 using GitUIPluginInterfaces;
+using Microsoft.VisualStudio.Composition;
 using NSubstitute;
 using NUnit.Framework;
 
@@ -30,7 +34,7 @@ namespace GitUITests.Script
         {
             ((Action)(() => ScriptOptionsParser.Contains(null, null))).Should()
                 .Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: arguments");
+                .WithMessage("Value cannot be null. (Parameter 'arguments')");
         }
 
         [Test]
@@ -38,7 +42,7 @@ namespace GitUITests.Script
         {
             ((Action)(() => ScriptOptionsParser.Contains("", null))).Should()
                 .Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: option");
+                .WithMessage("Value cannot be null. (Parameter 'option')");
         }
 
         [TestCase("", "", true)]
@@ -57,7 +61,7 @@ namespace GitUITests.Script
         {
             ((Action)(() => ScriptOptionsParser.DependsOnSelectedRevision(null))).Should()
                 .Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: option");
+                .WithMessage("Value cannot be null. (Parameter 'option')");
         }
 
         [TestCase("", false)]
@@ -109,7 +113,7 @@ namespace GitUITests.Script
         [Test]
         public void GetCurrentRevision_should_return_expected_if_current_revision_has_no_refs()
         {
-            var revision = new GitRevision(ObjectId.IndexId);
+            GitRevision revision = new(ObjectId.IndexId);
             _module.GetRevision(shortFormat: true, loadRefs: true).Returns(x => revision);
 
             var result = ScriptOptionsParser.GetTestAccessor()
@@ -123,7 +127,7 @@ namespace GitUITests.Script
         {
             ((Action)(() => ScriptOptionsParser.Parse(arguments: "bla", module: null, owner: null, scriptHostControl: null))).Should()
                 .Throw<ArgumentNullException>()
-                .WithMessage("Value cannot be null.\r\nParameter name: module");
+                .WithMessage("Value cannot be null. (Parameter 'module')");
         }
 
         [TestCase(null)]
@@ -153,7 +157,7 @@ namespace GitUITests.Script
         public void Parse_should_parse_c_arguments()
         {
             const string Subject = "line1";
-            var revision = new GitRevision(ObjectId.IndexId)
+            GitRevision revision = new(ObjectId.IndexId)
             {
                 Subject = Subject,
                 Body = $"{Subject}\n\nline3"
@@ -172,7 +176,7 @@ namespace GitUITests.Script
         public void Parse_should_parse_s_arguments()
         {
             const string Subject = "line1";
-            var revision = new GitRevision(ObjectId.IndexId)
+            GitRevision revision = new(ObjectId.IndexId)
             {
                 Subject = Subject,
                 Body = $"{Subject}\n\nline3"
@@ -219,7 +223,7 @@ namespace GitUITests.Script
         [Test]
         public void ParseScriptArguments_resolve_sRemotePathFromUrl_selectedRemotes_empty()
         {
-            var noSelectedRemotes = new List<string>();
+            List<string> noSelectedRemotes = new();
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
                 arguments: "{openUrl} https://gitlab.com{sRemotePathFromUrl}/tree/{sBranch}", option: "sRemotePathFromUrl",
@@ -235,7 +239,7 @@ namespace GitUITests.Script
         public void ParseScriptArguments_resolve_sRemotePathFromUrl_currentRemote_set()
         {
             var currentRemote = "myRemote";
-            var selectedRemotes = new List<string>() { currentRemote };
+            List<string> selectedRemotes = new() { currentRemote };
             _module.GetSetting(string.Format(SettingKeyString.RemoteUrl, currentRemote)).Returns("https://gitlab.com/gitlabhq/gitlabhq.git");
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
@@ -255,7 +259,7 @@ namespace GitUITests.Script
         {
             var option = "sRemoteBranch";
             var branch = remoteName + '/' + branchName;
-            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+            List<IGitRef> remoteBranches = new() { new GitRef(null, null, branch) };
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
                 arguments: "{" + option + "}", option,
@@ -274,7 +278,7 @@ namespace GitUITests.Script
         {
             var option = "sRemoteBranchName";
             var branch = remoteName + '/' + branchName;
-            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+            List<IGitRef> remoteBranches = new() { new GitRef(null, null, branch) };
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
                 arguments: "{" + option + "}", option,
@@ -293,7 +297,7 @@ namespace GitUITests.Script
         {
             var option = "cRemoteBranch";
             var branch = remoteName + '/' + branchName;
-            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+            List<IGitRef> remoteBranches = new() { new GitRef(null, null, branch) };
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
                 arguments: "{" + option + "}", option,
@@ -312,7 +316,7 @@ namespace GitUITests.Script
         {
             var option = "cRemoteBranchName";
             var branch = remoteName + '/' + branchName;
-            var remoteBranches = new List<IGitRef>() { new GitRef(null, null, branch) };
+            List<IGitRef> remoteBranches = new() { new GitRef(null, null, branch) };
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
                 arguments: "{" + option + "}", option,
@@ -342,8 +346,14 @@ namespace GitUITests.Script
         [Test]
         public void ParseScriptArguments_resolve_RepoName()
         {
+            var composition = TestComposition.Empty
+                .AddParts(typeof(MockRepositoryDescriptionProvider));
+
+            ExportProvider mefExportProvider = composition.ExportProviderFactory.CreateExportProvider();
+            ManagedExtensibility.SetTestExportProvider(mefExportProvider);
+
             var option = "RepoName";
-            var dirName = "Windows"; // chose one which will never contain a repo
+            var dirName = MockRepositoryDescriptionProvider.ShortName; // chose one which will never contain a repo
             _module.WorkingDir.Returns("C:\\" + dirName);
 
             var result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments(
@@ -377,6 +387,15 @@ namespace GitUITests.Script
 
             result = ScriptOptionsParser.GetTestAccessor().ParseScriptArguments("{sMessage}", "sMessage", null, null, null, null, null, null, null, null, null, gitRevision, null, null, null, null, null, null);
             result.Should().Be("test string with \"double qoutes\" and escaped \\\"double qoutes\\\"");
+        }
+
+        [Shared, PartNotDiscoverable]
+        [Export(typeof(IRepositoryDescriptionProvider))]
+        internal class MockRepositoryDescriptionProvider : IRepositoryDescriptionProvider
+        {
+            internal const string ShortName = "Windows";
+
+            public string Get(string repositoryDir) => ShortName;
         }
     }
 }

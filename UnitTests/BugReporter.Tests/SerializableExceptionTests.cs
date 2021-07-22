@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
 using ApprovalTests;
 using ApprovalTests.Namers;
 using BugReporter.Serialization;
@@ -12,6 +11,8 @@ using NUnit.Framework;
 namespace BugReporterTests
 {
     [TestFixture]
+    [SetCulture("en-US")]
+    [SetUICulture("en-US")]
     public sealed class SerializableExceptionTests
     {
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -72,15 +73,7 @@ namespace BugReporterTests
             StringBuilder m = new();
             foreach (string line in exceptionMessage.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
             {
-                Match match = Regex.Match(line, @".*(?<path>\sin\s.*)");
-                if (match.Success)
-                {
-                    m.AppendLine(line.Replace(match.Groups["path"].Value, string.Empty));
-                }
-                else
-                {
-                    m.AppendLine(line);
-                }
+                m.AppendLine(Regex.Replace(line, @"^(?<keep>.*)(?<codeLocationToBeRemoved>\sin\s.*)$", "${keep}"));
             }
 
             return m.ToString();

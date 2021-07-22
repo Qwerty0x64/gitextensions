@@ -1,11 +1,11 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Drawing;
+﻿using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using FluentAssertions;
 using GitCommands;
 using GitCommands.Git;
+using GitUI;
 using GitUI.CommandsDialogs;
 using GitUI.UserControls;
 using GitUIPluginInterfaces;
@@ -43,7 +43,7 @@ namespace GitUITests.CommandsDialogs
         [Test]
         public void LoadItemsInTreeView_should_not_add_nodes_if_no_children()
         {
-            var item = new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "folder");
+            GitItem item = new(0, GitObjectType.Tree, ObjectId.Random(), "folder");
             _revisionInfoProvider.LoadChildren(item).Returns(x => null);
 
             _controller.LoadChildren(item, _rootNode.Nodes, _imageList.Images);
@@ -56,7 +56,7 @@ namespace GitUITests.CommandsDialogs
         public void LoadItemsInTreeView_should_add_all_none_GitItem_items_with_1st_level_nodes()
         {
             var items = new INamedGitItem[] { new MockGitItem("file1"), new MockGitItem("file2") };
-            var item = new MockGitItem("folder");
+            MockGitItem item = new("folder");
             _revisionInfoProvider.LoadChildren(item).Returns(items);
 
             _controller.LoadChildren(item, _rootNode.Nodes, _imageList.Images);
@@ -77,7 +77,7 @@ namespace GitUITests.CommandsDialogs
         public void LoadItemsInTreeView_should_add_IsTree_as_folders()
         {
             var items = new[] { new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "file1"), new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "file2") };
-            var item = new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "folder");
+            GitItem item = new(0, GitObjectType.Tree, ObjectId.Random(), "folder");
 
             _revisionInfoProvider.LoadChildren(item).Returns(items);
 
@@ -99,7 +99,7 @@ namespace GitUITests.CommandsDialogs
         public void LoadItemsInTreeView_should_add_IsCommit_as_submodule()
         {
             var items = new[] { new GitItem(0, GitObjectType.Commit, ObjectId.Random(), "file1"), new GitItem(0, GitObjectType.Commit, ObjectId.Random(), "file2") };
-            var item = new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "folder");
+            GitItem item = new(0, GitObjectType.Tree, ObjectId.Random(), "folder");
             _revisionInfoProvider.LoadChildren(item).Returns(items);
 
             _controller.LoadChildren(item, _rootNode.Nodes, _imageList.Images);
@@ -120,7 +120,7 @@ namespace GitUITests.CommandsDialogs
         public void LoadItemsInTreeView_should_add_IsBlob_as_file()
         {
             var items = new[] { new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file1"), new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file2") };
-            var item = new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "folder");
+            GitItem item = new(0, GitObjectType.Tree, ObjectId.Random(), "folder");
             _revisionInfoProvider.LoadChildren(item).Returns(items);
 
             _controller.LoadChildren(item, _rootNode.Nodes, _imageList.Images);
@@ -137,7 +137,7 @@ namespace GitUITests.CommandsDialogs
         public void LoadItemsInTreeView_should_not_load_icons_for_file_without_extension()
         {
             var items = new[] { new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file1."), new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file2") };
-            var item = new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "folder");
+            GitItem item = new(0, GitObjectType.Tree, ObjectId.Random(), "folder");
             _revisionInfoProvider.LoadChildren(item).Returns(items);
 
             _controller.LoadChildren(item, _rootNode.Nodes, _imageList.Images);
@@ -159,7 +159,7 @@ namespace GitUITests.CommandsDialogs
         public void LoadItemsInTreeView_should_not_add_icons_for_file_if_none_provided()
         {
             var items = new[] { new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file1.foo"), new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file2.txt") };
-            var item = new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "folder");
+            GitItem item = new(0, GitObjectType.Tree, ObjectId.Random(), "folder");
             _revisionInfoProvider.LoadChildren(item).Returns(items);
 
             _controller.LoadChildren(item, _rootNode.Nodes, _imageList.Images);
@@ -181,10 +181,10 @@ namespace GitUITests.CommandsDialogs
         public void LoadItemsInTreeView_should_add_icon_for_file_extension_only_once()
         {
             var items = new[] { new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file1.txt"), new GitItem(0, GitObjectType.Blob, ObjectId.Random(), "file2.txt") };
-            var item = new GitItem(0, GitObjectType.Tree, ObjectId.Random(), "folder");
+            GitItem item = new(0, GitObjectType.Tree, ObjectId.Random(), "folder");
             _revisionInfoProvider.LoadChildren(item).Returns(items);
-            using var bitmap = new Bitmap(1, 1);
-            using var icon = Icon.FromHandle(bitmap.GetHicon());
+            using Bitmap bitmap = new(1, 1);
+            using Icon icon = bitmap.ToIcon();
             _iconProvider.Get(Arg.Any<string>(), Arg.Is<string>(x => x.EndsWith(".txt"))).Returns(icon);
 
             _controller.LoadChildren(item, _rootNode.Nodes, _imageList.Images);
@@ -217,7 +217,7 @@ namespace GitUITests.CommandsDialogs
                 else
                 {
                     var node = nodes.Add(folder);
-                    var item = new GitItem(666, GitObjectType.Tree, ObjectId.WorkTreeId, folder);
+                    GitItem item = new(666, GitObjectType.Tree, ObjectId.WorkTreeId, folder);
                     node.Name = folder;
                     node.Tag = item;
                     nodes = node.Nodes;
@@ -225,14 +225,14 @@ namespace GitUITests.CommandsDialogs
             }
 
             var fileNode = nodes.Add(fileName);
-            var fileItem = new GitItem(666, GitObjectType.Blob, ObjectId.WorkTreeId, fileName);
+            GitItem fileItem = new(666, GitObjectType.Blob, ObjectId.WorkTreeId, fileName);
             fileNode.Tag = fileItem;
         }
 
         [Test]
         public void SelectFileOrFolder_should_select_a_folder()
         {
-            var nativeTreeView = new NativeTreeView();
+            NativeTreeView nativeTreeView = new();
             PopulateTreeView(nativeTreeView, @"folder1\file1");
             PopulateTreeView(nativeTreeView, @"folder2\file2");
             var isNodeFound = _controller.SelectFileOrFolder(nativeTreeView, "folder1");
@@ -244,7 +244,7 @@ namespace GitUITests.CommandsDialogs
         [Test]
         public void SelectFileOrFolder_should_select_a_file()
         {
-            var nativeTreeView = new NativeTreeView();
+            NativeTreeView nativeTreeView = new();
             PopulateTreeView(nativeTreeView, @"folder1\file1");
             PopulateTreeView(nativeTreeView, @"folder1\file2");
             var isNodeFound = _controller.SelectFileOrFolder(nativeTreeView, @"folder1\file1");
@@ -256,7 +256,7 @@ namespace GitUITests.CommandsDialogs
         [Test]
         public void SelectFileOrFolder_should_not_select_an_inexisting_folder()
         {
-            var nativeTreeView = new NativeTreeView();
+            NativeTreeView nativeTreeView = new();
             PopulateTreeView(nativeTreeView, @"folder1\file1");
             var isNodeFound = _controller.SelectFileOrFolder(nativeTreeView, "inexisting_folder");
 
@@ -267,7 +267,7 @@ namespace GitUITests.CommandsDialogs
         [Test]
         public void SelectFileOrFolder_should_select_a_file_in_complex_filetree()
         {
-            var nativeTreeView = new NativeTreeView();
+            NativeTreeView nativeTreeView = new();
             PopulateTreeView(nativeTreeView, @"folder1\subfolder1\subfolder2\file1");
             PopulateTreeView(nativeTreeView, @"folder1\subfolder1\subfolder2\file2");
             PopulateTreeView(nativeTreeView, @"folder1\subfolder3\file2");

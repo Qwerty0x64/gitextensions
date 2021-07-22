@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands.Config
@@ -14,7 +13,7 @@ namespace GitCommands.Config
         private static Encoding GetEncoding() => GitModule.SystemEncoding;
         public static readonly char[] CommentChars = { ';', '#' };
 
-        private readonly List<IConfigSection> _configSections = new List<IConfigSection>();
+        private readonly List<IConfigSection> _configSections = new();
 
         public string FileName { get; }
         public bool Local { get; }
@@ -83,7 +82,7 @@ namespace GitCommands.Config
 
         public string GetAsString()
         {
-            var configFileContent = new StringBuilder();
+            StringBuilder configFileContent = new();
 
             foreach (var section in ConfigSections)
             {
@@ -227,7 +226,7 @@ namespace GitCommands.Config
 
         public IConfigSection? FindConfigSection(string name)
         {
-            var configSectionToFind = new ConfigSection(name, true);
+            ConfigSection configSectionToFind = new(name, true);
 
             return FindConfigSection(configSectionToFind);
         }
@@ -306,7 +305,7 @@ namespace GitCommands.Config
 
                 string value = _token.ToString();
 
-                if (Strings.IsNullOrEmpty(_key))
+                if (string.IsNullOrEmpty(_key))
                 {
                     throw new Exception($"Value {value} for empty key in config file {FileName}.");
                 }

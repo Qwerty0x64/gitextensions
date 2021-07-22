@@ -3,7 +3,6 @@
 using System;
 using System.Diagnostics.Contracts;
 using GitCommands;
-using GitExtUtils;
 using GitUI.UserControls;
 using GitUIPluginInterfaces;
 
@@ -30,8 +29,8 @@ namespace GitUI.CommandsDialogs
         [Pure]
         public FileStatusItem CreateFileStatusItem(string name, GitRevision rev)
         {
-            var gis = new GitItemStatus(name) { IsNew = true };
-            var fsi = new FileStatusItem(null, rev, gis);
+            GitItemStatus gis = new(name) { IsNew = true };
+            FileStatusItem fsi = new(null, rev, gis);
             return fsi;
         }
 
@@ -96,7 +95,7 @@ namespace GitUI.CommandsDialogs
                     : item.Item.Name)
                 ?.ToPosixPath();
             var id = (isSecondRevision ? item.SecondRevision : item.FirstRevision)?.ObjectId;
-            if (Strings.IsNullOrWhiteSpace(name) || id is null)
+            if (string.IsNullOrWhiteSpace(name) || id is null)
             {
                 return null;
             }

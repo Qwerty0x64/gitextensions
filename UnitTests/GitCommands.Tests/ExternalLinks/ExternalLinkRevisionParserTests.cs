@@ -5,7 +5,6 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Serialization;
 using FluentAssertions;
-using GitCommands;
 using GitCommands.ExternalLinks;
 using GitCommands.Remotes;
 using GitUIPluginInterfaces;
@@ -111,7 +110,7 @@ namespace GitCommandsTests.ExternalLinks
 
         private static BindingList<ConfigFileRemote> GetDefaultRemotes()
         {
-            var remotes = new BindingList<ConfigFileRemote>();
+            BindingList<ConfigFileRemote> remotes = new();
             remotes.Add(new ConfigFileRemote
             {
                 Name = "origin",
@@ -136,9 +135,9 @@ namespace GitCommandsTests.ExternalLinks
         [CanBeNull]
         private static IReadOnlyList<ExternalLinkDefinition> Parse(string xml)
         {
-            var serializer = new XmlSerializer(typeof(List<ExternalLinkDefinition>));
-            using var stringReader = new StringReader(xml);
-            using var xmlReader = new XmlTextReader(stringReader);
+            XmlSerializer serializer = new(typeof(List<ExternalLinkDefinition>));
+            using StringReader stringReader = new(xml);
+            using XmlTextReader xmlReader = new(stringReader);
             return serializer.Deserialize(xmlReader) as List<ExternalLinkDefinition>;
         }
 

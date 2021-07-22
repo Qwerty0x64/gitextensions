@@ -46,7 +46,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             CheckSettingsLogic.SolveGitCommand(GitPath.Text.Trim());
 
-            using var browseDialog = new OpenFileDialog
+            using OpenFileDialog browseDialog = new()
             {
                 FileName = AppSettings.GitCommandValue,
                 Filter = "Git.cmd (git.cmd)|git.cmd|Git.exe (git.exe)|git.exe|Git (git)|git"
@@ -98,7 +98,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
             // TODO?: rescan
 
-            // orginal:
+            // original:
             ////            throw new NotImplementedException(@"
             ////            Save();
             ////            using (var frm = new FormFixHome()) frm.ShowDialog(this);

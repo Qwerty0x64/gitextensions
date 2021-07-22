@@ -13,6 +13,7 @@ using GitExtUtils.GitUI;
 using GitUI.CommandsDialogs.BrowseDialog;
 using GitUI.Hotkey;
 using GitUI.Properties;
+using GitUI.UserControls;
 using GitUIPluginInterfaces;
 using Microsoft;
 using ResourceManager;
@@ -47,7 +48,7 @@ See the changes in the commit form.");
         private readonly TranslationString _success = new("Success");
 
         // store strings to not keep references to nodes
-        private readonly Stack<string> _lastSelectedNodes = new Stack<string>();
+        private readonly Stack<string> _lastSelectedNodes = new();
         private readonly IRevisionFileTreeController _revisionFileTreeController;
         private readonly IFullPathResolver _fullPathResolver;
         private readonly IFindFilePredicateProvider _findFilePredicateProvider;
@@ -361,14 +362,14 @@ See the changes in the commit form.");
                     case GitObjectType.Blob:
                     case GitObjectType.Commit:
                     {
-                        var file = new GitItemStatus(name: gitItem.FileName)
+                        GitItemStatus file = new(name: gitItem.FileName)
                         {
                             IsTracked = true,
                             TreeGuid = gitItem.ObjectId,
                             IsSubmodule = gitItem.ObjectType == GitObjectType.Commit
                         };
 
-                        return FileText.ViewGitItemAsync(file);
+                        return FileText.ViewGitItemAsync(file, gitItem.ObjectId);
                     }
 
                     default:
@@ -402,12 +403,12 @@ See the changes in the commit form.");
         {
             if (e.Item is TreeNode { Tag: GitItem gitItem })
             {
-                var fileList = new StringCollection();
+                StringCollection fileList = new();
                 var fileName = _fullPathResolver.Resolve(gitItem.FileName);
 
                 fileList.Add(fileName.ToNativePath());
 
-                var obj = new DataObject();
+                DataObject obj = new();
                 obj.SetFileDropList(fileList);
 
                 DoDragDrop(obj, DragDropEffects.Copy);
@@ -462,7 +463,7 @@ See the changes in the commit form.");
                 selectedItem = searchWindow.SelectedItem;
             }
 
-            if (Strings.IsNullOrEmpty(selectedItem))
+            if (string.IsNullOrEmpty(selectedItem))
             {
                 return;
             }
@@ -666,9 +667,7 @@ See the changes in the commit form.");
                 var fileName = _fullPathResolver.Resolve(gitItem.FileName);
                 if (File.Exists(fileName))
                 {
-                    // NOTE File.Exists is not annotated to imply that fileName is non-null when the returned value is true
-                    // in .NET Framework. This suppression will not be required when moving to .NET 5+.
-                    OsShellUtil.OpenAs(fileName!.ToNativePath());
+                    OsShellUtil.OpenAs(fileName.ToNativePath());
                 }
             }
         }
@@ -683,7 +682,7 @@ See the changes in the commit form.");
 
         private void diffWithRememberedFileToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (!(tvGitTree.SelectedNode?.Tag is GitItem gitItem) || _revision is null)
+            if (tvGitTree.SelectedNode?.Tag is not GitItem gitItem || _revision is null)
             {
                 return;
             }
@@ -723,8 +722,8 @@ See the changes in the commit form.");
             if (tvGitTree.SelectedNode?.Tag is GitItem { ObjectType: GitObjectType.Blob } gitItem)
             {
                 var fullName = _fullPathResolver.Resolve(gitItem.FileName);
-                using var fileDialog =
-                    new SaveFileDialog
+                using SaveFileDialog fileDialog =
+                    new()
                     {
                         InitialDirectory = Path.GetDirectoryName(fullName),
                         FileName = Path.GetFileName(fullName),
@@ -764,7 +763,7 @@ See the changes in the commit form.");
                 return;
             }
 
-            var itemStatus = new GitItemStatus(name: selectedFile);
+            GitItemStatus itemStatus = new(name: selectedFile);
 
             var answer = MessageBox.Show(_assumeUnchangedMessage.Text, _assumeUnchangedCaption.Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 

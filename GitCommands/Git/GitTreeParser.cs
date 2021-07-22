@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands.Git
@@ -22,7 +21,7 @@ namespace GitCommands.Git
 
         public IEnumerable<GitItem> Parse(string? tree)
         {
-            if (Strings.IsNullOrWhiteSpace(tree))
+            if (string.IsNullOrWhiteSpace(tree))
             {
                 return Enumerable.Empty<GitItem>();
             }

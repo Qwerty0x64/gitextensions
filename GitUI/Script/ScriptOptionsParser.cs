@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using GitCommands.Config;
-using GitCommands.Git;
 using GitCommands.UserRepositoryHistory;
-using GitExtUtils;
 using GitUI.UserControls.RevisionGrid;
 using GitUIPluginInterfaces;
 
@@ -89,7 +88,7 @@ namespace GitUI.Script
 
         public static (string? arguments, bool abort) Parse(string? arguments, IGitModule module, IWin32Window owner, IScriptHostControl? scriptHostControl)
         {
-            if (Strings.IsNullOrWhiteSpace(arguments))
+            if (string.IsNullOrWhiteSpace(arguments))
             {
                 return (arguments, abort: false);
             }
@@ -100,16 +99,16 @@ namespace GitUI.Script
             GitRevision? currentRevision = null;
 
             IReadOnlyList<GitRevision> allSelectedRevisions = Array.Empty<GitRevision>();
-            var selectedLocalBranches = new List<IGitRef>();
-            var selectedRemoteBranches = new List<IGitRef>();
-            var selectedRemotes = new List<string>();
-            var selectedBranches = new List<IGitRef>();
-            var selectedTags = new List<IGitRef>();
-            var currentLocalBranches = new List<IGitRef>();
-            var currentRemoteBranches = new List<IGitRef>();
+            List<IGitRef> selectedLocalBranches = new();
+            List<IGitRef> selectedRemoteBranches = new();
+            List<string> selectedRemotes = new();
+            List<IGitRef> selectedBranches = new();
+            List<IGitRef> selectedTags = new();
+            List<IGitRef> currentLocalBranches = new();
+            List<IGitRef> currentRemoteBranches = new();
             var currentRemote = "";
-            var currentBranches = new List<IGitRef>();
-            var currentTags = new List<IGitRef>();
+            List<IGitRef> currentBranches = new();
+            List<IGitRef> currentTags = new();
 
             foreach (string option in Options)
             {
@@ -169,7 +168,7 @@ namespace GitUI.Script
                 return string.Empty;
             }
 
-            using var f = new FormQuickGitRefSelector();
+            using FormQuickGitRefSelector f = new();
             f.Location = scriptHostControl?.GetQuickItemSelectorLocation() ?? new System.Drawing.Point();
             f.Init(FormQuickGitRefSelector.Action.Select, items);
             f.ShowDialog();
@@ -178,7 +177,7 @@ namespace GitUI.Script
 
         private static string AskToSpecify(IEnumerable<string> options, IScriptHostControl? scriptHostControl)
         {
-            using var f = new FormQuickStringSelector();
+            using FormQuickStringSelector f = new();
             f.Location = scriptHostControl?.GetQuickItemSelectorLocation() ?? new System.Drawing.Point();
             f.Init(options.ToList());
             f.ShowDialog();
@@ -457,7 +456,9 @@ namespace GitUI.Script
                     break;
 
                 case "RepoName":
-                    newString = module is null ? string.Empty : new RepositoryDescriptionProvider(new GitDirectoryResolver()).Get(module.WorkingDir);
+                    newString = module is null
+                        ? string.Empty
+                        : ManagedExtensibility.GetExport<IRepositoryDescriptionProvider>().Value.Get(module.WorkingDir);
                     break;
 
                 case "UserInput":
@@ -470,7 +471,7 @@ namespace GitUI.Script
                     break;
 
                 case "UserFiles":
-                    using (FormFilePrompt prompt = new FormFilePrompt())
+                    using (FormFilePrompt prompt = new())
                     {
                         if (prompt.ShowDialog(owner) != DialogResult.OK)
                         {
@@ -547,7 +548,7 @@ namespace GitUI.Script
             return remoteBranchName;
         }
 
-        internal static TestAccessor GetTestAccessor() => new TestAccessor();
+        internal static TestAccessor GetTestAccessor() => new();
 
         internal readonly struct TestAccessor
         {

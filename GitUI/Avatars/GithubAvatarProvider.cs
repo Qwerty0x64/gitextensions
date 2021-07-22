@@ -4,7 +4,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
-using GitExtUtils;
 using JetBrains.Annotations;
 
 namespace GitUI.Avatars
@@ -21,7 +20,7 @@ namespace GitUI.Avatars
          * RaMMicHaeL
          * SamuelLongchamps
          */
-        private static readonly Regex _gitHubEmailRegex = new Regex(@"^(\d+\+)?(?<username>[^@]+)@users\.noreply\.github\.com$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex _gitHubEmailRegex = new(@"^(\d+\+)?(?<username>[^@]+)@users\.noreply\.github\.com$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly IAvatarDownloader _downloader;
         private readonly bool _onlySupplyNoReply;
@@ -34,7 +33,7 @@ namespace GitUI.Avatars
 
         public async Task<Image?> GetAvatarAsync(string email, string? name, int imageSize)
         {
-            var uri = await BuildAvatarUri(email, imageSize);
+            var uri = await BuildAvatarUriAsync(email, imageSize);
 
             if (uri is null)
             {
@@ -61,7 +60,7 @@ namespace GitUI.Avatars
             return image;
         }
 
-        private async Task<Uri?> BuildAvatarUri(string email, int imageSize)
+        private async Task<Uri?> BuildAvatarUriAsync(string email, int imageSize)
         {
             var match = _gitHubEmailRegex.Match(email);
 
@@ -86,16 +85,16 @@ namespace GitUI.Avatars
 
                 if (isBot)
                 {
-                    var client = new Git.hub.Client();
+                    Git.hub.Client client = new();
                     var userProfile = await client.GetUserAsync(username);
 
-                    if (Strings.IsNullOrEmpty(userProfile?.AvatarUrl))
+                    if (string.IsNullOrEmpty(userProfile?.AvatarUrl))
                     {
                         return null;
                     }
 
-                    var builder = new UriBuilder(userProfile.AvatarUrl);
-                    var query = new StringBuilder(builder.Query.TrimStart('?'));
+                    UriBuilder builder = new(userProfile.AvatarUrl);
+                    StringBuilder query = new(builder.Query.TrimStart('?'));
                     query.Append(query.Length == 0 ? "?" : "&");
                     query.Append("s=").Append(imageSize);
                     builder.Query = query.ToString();

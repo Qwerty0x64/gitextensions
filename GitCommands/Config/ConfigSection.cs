@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands.Config
@@ -77,7 +76,7 @@ namespace GitCommands.Config
 
         public void SetValue(string key, string? value)
         {
-            if (Strings.IsNullOrEmpty(value))
+            if (string.IsNullOrEmpty(value))
             {
                 _configKeys.Remove(key);
             }
@@ -118,7 +117,7 @@ namespace GitCommands.Config
         public override string ToString()
         {
             string result = "[" + SectionName;
-            if (!Strings.IsNullOrEmpty(SubSection))
+            if (!string.IsNullOrEmpty(SubSection))
             {
                 var escSubSection = SubSection.Replace("\"", "\\\"");
                 escSubSection = escSubSection.Replace("\\", "\\\\");

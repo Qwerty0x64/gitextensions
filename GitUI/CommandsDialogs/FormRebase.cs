@@ -8,14 +8,14 @@ using GitCommands.Git.Commands;
 using GitCommands.Patches;
 using GitExtUtils.GitUI.Theming;
 using GitUI.HelperDialogs;
-using GitUI.Theming;
+using GitUIPluginInterfaces;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
 {
     public partial class FormRebase : GitModuleForm
     {
-        private static readonly List<PatchFile> Skipped = new List<PatchFile>();
+        private static readonly List<PatchFile> Skipped = new();
         private readonly TranslationString _continueRebaseText = new("Continue rebase");
         private readonly TranslationString _solveConflictsText = new("Solve conflicts");
 
@@ -25,7 +25,7 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _noBranchSelectedText = new("Please select a branch");
 
         private readonly TranslationString _branchUpToDateText =
-            new TranslationString("Current branch a is up to date." + Environment.NewLine + "Nothing to rebase.");
+            new("Current branch a is up to date." + Environment.NewLine + "Nothing to rebase.");
         private readonly TranslationString _branchUpToDateCaption = new("Rebase");
 
         private readonly TranslationString _hoverShowImageLabelText = new("Hover to see scenario when fast forward is possible.");
@@ -75,12 +75,17 @@ namespace GitUI.CommandsDialogs
             _startRebaseImmediately = startRebaseImmediately;
         }
 
-        private void FormRebaseLoad(object sender, EventArgs e)
+        protected override void OnShown(EventArgs e)
         {
+            base.OnShown(e);
+
             var selectedHead = Module.GetSelectedBranch();
             Currentbranch.Text = selectedHead;
 
-            var refs = Module.GetRefs(true, true).OfType<GitRef>().ToList();
+            // Offer rebase on refs also for tags (but not stash, notes etc)
+            List<GitRef> refs = _startRebaseImmediately
+                ? new()
+                : Module.GetRefs(RefsFilter.Heads | RefsFilter.Remotes | RefsFilter.Tags).OfType<GitRef>().ToList();
             Branches.DataSource = refs;
             Branches.DisplayMember = nameof(GitRef.Name);
 
@@ -91,7 +96,7 @@ namespace GitUI.CommandsDialogs
 
             Branches.Select();
 
-            refs = Module.GetRefs(false, true).OfType<GitRef>().ToList();
+            refs = refs.Where(h => h.IsHead).ToList();
             cboTo.DataSource = refs;
             cboTo.DisplayMember = nameof(GitRef.Name);
 
@@ -332,7 +337,7 @@ namespace GitUI.CommandsDialogs
 
         private void btnChooseFromRevision_Click(object sender, EventArgs e)
         {
-            using var chooseForm = new FormChooseCommit(UICommands, txtFrom.Text);
+            using FormChooseCommit chooseForm = new(UICommands, txtFrom.Text);
             if (chooseForm.ShowDialog(this) == DialogResult.OK && chooseForm.SelectedRevision is not null)
             {
                 txtFrom.Text = chooseForm.SelectedRevision.ObjectId.ToShortString();
@@ -345,7 +350,7 @@ namespace GitUI.CommandsDialogs
             EnableButtons();
         }
 
-        internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+        internal TestAccessor GetTestAccessor() => new(this);
 
         internal readonly struct TestAccessor
         {

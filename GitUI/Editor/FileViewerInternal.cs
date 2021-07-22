@@ -121,7 +121,7 @@ namespace GitUI.Editor
                 return Array.Empty<TextMarker>();
             }
 
-            var selectionMarkers = new List<TextMarker>();
+            List<TextMarker> selectionMarkers = new();
 
             string textContent = TextEditor.Document.TextContent;
             int indexMatch = -1;
@@ -132,7 +132,7 @@ namespace GitUI.Editor
                 {
                     Color highlightColor = AppColor.HighlightAllOccurences.GetThemeColor();
 
-                    var textMarker = new TextMarker(indexMatch,
+                    TextMarker textMarker = new(indexMatch,
                         word.Length, TextMarkerType.SolidBlock, highlightColor,
                         ColorHelper.GetForeColorForBackColor(highlightColor));
 
@@ -153,7 +153,7 @@ namespace GitUI.Editor
         public Action? OpenWithDifftool { get; private set; }
 
         /// <summary>
-        /// Move the file viewer cursor position to the next TextMarker found in the document that matches the AppColor.HighlightAllOccurences/>.
+        /// Move the file viewer cursor position to the next TextMarker found in the document that matches the AppColor.HighlightAllOccurences.
         /// </summary>
         public void GoToNextOccurrence()
         {
@@ -172,7 +172,7 @@ namespace GitUI.Editor
         }
 
         /// <summary>
-        /// Move the file viewer cursor position to the previous TextMarker found in the document that matches the AppColor.HighlightAllOccurences/>.
+        /// Move the file viewer cursor position to the previous TextMarker found in the document that matches the AppColor.HighlightAllOccurences.
         /// </summary>
         public void GoToPreviousOccurrence()
         {
@@ -583,7 +583,7 @@ namespace GitUI.Editor
         {
             private readonly FileViewerInternal _viewer;
             private ViewPosition _currentViewPosition;
-            internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+            internal TestAccessor GetTestAccessor() => new(this);
 
             public CurrentViewPositionCache(FileViewerInternal viewer)
             {
@@ -598,7 +598,7 @@ namespace GitUI.Editor
                 }
 
                 // store the previous view position
-                var currentViewPosition = new ViewPosition
+                ViewPosition currentViewPosition = new()
                 {
                     ActiveLineNum = null,
                     FirstLine = _viewer.GetLineText(0),
@@ -725,7 +725,7 @@ namespace GitUI.Editor
             internal DiffLineInfo? ActiveLineNum;
         }
 
-        internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+        internal TestAccessor GetTestAccessor() => new(this);
 
         internal readonly struct TestAccessor
         {

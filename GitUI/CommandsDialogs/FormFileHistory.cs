@@ -31,8 +31,10 @@ namespace GitUI.CommandsDialogs
         private readonly FormBrowseMenus _formBrowseMenus;
         private readonly IFullPathResolver _fullPathResolver;
         private readonly FormFileHistoryController _controller = new();
+        private readonly CancellationTokenSequence _viewChangesSequence = new();
 
         private BuildReportTabPageExtension? _buildReportTabPageExtension;
+        private readonly Dictionary<ObjectId, string> _filePathByObjectId = new();
 
         private string FileName { get; set; }
 
@@ -168,6 +170,7 @@ namespace GitUI.CommandsDialogs
             if (disposing)
             {
                 _asyncLoader.Dispose();
+                _viewChangesSequence.Dispose();
 
                 // if the form was instantiated by the translation app, all of the following would be null
                 _filterRevisionsHelper?.Dispose();
@@ -238,71 +241,77 @@ namespace GitUI.CommandsDialogs
                 // browse dialog.
                 FileName = fileName.ToPosixPath();
 
-                var res = (revision: (string?)null, path: $" \"{fileName}\"");
                 var fullFilePath = _fullPathResolver.Resolve(fileName);
+                _filePathByObjectId.Clear();
 
-                if (AppSettings.FollowRenamesInFileHistory && !Directory.Exists(fullFilePath))
+                if (!AppSettings.FollowRenamesInFileHistory)
                 {
-                    // git log --follow is not working as expected (see  http://kerneltrap.org/mailarchive/git/2009/1/30/4856404/thread)
-                    //
-                    // But we can take a more complicated path to get reasonable results:
-                    //  1. use git log --follow to get all previous filenames of the file we are interested in
-                    //  2. use git log "list of files names" to get the history graph
-                    //
-                    // note: This implementation is quite a quick hack (by someone who does not speak C# fluently).
-                    //
+                    return (revision: (string?)null, path: $" \"{fileName}\"");
+                }
 
-                    var args = new GitArgumentBuilder("log")
+                // git log --follow is not working as expected (see  http://kerneltrap.org/mailarchive/git/2009/1/30/4856404/thread)
+                //
+                // But we can take a more complicated path to get reasonable results:
+                //  1. use git log --follow to get all previous filenames of the file we are interested in
+                //  2. use git log "list of files names" to get the history graph
+                //
+                // note: This implementation is quite a quick hack (by someone who does not speak C# fluently).
+                //
+
+                const string startOfObjectId = "????";
+                GitArgumentBuilder args = new("log")
+                {
+                    // --name-only will list each filename on a separate line, ending with a an empty line
+                    // Find start of a new commit with a sequence impossible in a filename
+                    $"--format=\"{startOfObjectId}%H\"",
+                    "--name-only",
+                    "--follow",
+                    FindRenamesAndCopiesOpts(),
+                    "--",
+                    fileName.Quote()
+                };
+
+                HashSet<string?> setOfFileNames = new();
+                var lines = Module.GitExecutable.GetOutputLines(args, outputEncoding: GitModule.LosslessEncoding);
+
+                ObjectId currentObjectId = null;
+                foreach (var line in lines.Select(GitModule.ReEncodeFileNameFromLossless))
+                {
+                    if (string.IsNullOrEmpty(line))
                     {
-                        "--format=\"%n\"",
-                        "--name-only",
-                        "--follow",
-                        FindRenamesAndCopiesOpts(),
-                        "--",
-                        fileName.Quote()
-                    };
-
-                    var listOfFileNames = new StringBuilder(fileName.Quote());
-
-                    // keep a set of the file names already seen
-                    var setOfFileNames = new HashSet<string?> { fileName };
-
-                    var lines = Module.GitExecutable.GetOutputLines(args, outputEncoding: GitModule.LosslessEncoding);
-
-                    foreach (var line in lines.Select(GitModule.ReEncodeFileNameFromLossless))
-                    {
-                        if (!Strings.IsNullOrEmpty(line) && setOfFileNames.Add(line))
-                        {
-                            listOfFileNames.Append(" \"");
-                            listOfFileNames.Append(line);
-                            listOfFileNames.Append('\"');
-                        }
+                        // empty filename after sha
+                        continue;
                     }
 
-                    // here we need --name-only to get the previous filenames in the revision graph
-                    res.path = listOfFileNames.ToString();
-                    res.revision += $" --name-only --parents{FindRenamesAndCopiesOpts()}";
-                }
-                else if (AppSettings.FollowRenamesInFileHistory)
-                {
-                    // history of a directory
-                    // --parents doesn't work with --follow enabled, but needed to graph a filtered log
-                    res.revision = $" {FindRenamesOpt()} --follow --parents";
-                }
-                else
-                {
-                    // rename following disabled
-                    res.revision = " --parents";
+                    if (line.StartsWith(startOfObjectId))
+                    {
+                        if (line.Length < ObjectId.Sha1CharCount + startOfObjectId.Length
+                            || !ObjectId.TryParse(line, offset: startOfObjectId.Length, out currentObjectId))
+                        {
+                            // Parse error, ignore
+                            currentObjectId = null;
+                        }
+
+                        continue;
+                    }
+
+                    if (currentObjectId == null)
+                    {
+                        // Parsing has failed, ignore
+                        continue;
+                    }
+
+                    // Add only the first file to the dictionary
+                    _filePathByObjectId.TryAdd(currentObjectId, line);
+                    setOfFileNames.Add(line);
                 }
 
-                if (AppSettings.FullHistoryInFileHistory)
-                {
-                    res.revision = string.Concat(" --full-history ", AppSettings.SimplifyMergesInFileHistory ? "--simplify-merges " : string.Empty, res.revision);
-                }
-
-                return res;
+                return (revision: FindRenamesAndCopiesOpts(), path: string.Join("", setOfFileNames.Select(s => @$" ""{s}""")));
             }
         }
+
+        private string? GetFileNameForRevision(GitRevision rev)
+            => _filePathByObjectId.TryGetValue(rev.ObjectId, out string? path) ? path : null;
 
         // returns " --find-renames=..." according to app settings
         private static ArgumentString FindRenamesOpt()
@@ -353,13 +362,7 @@ namespace GitUI.CommandsDialogs
 
             GitRevision revision = selectedRevisions[0];
             var children = FileChanges.GetRevisionChildren(revision.ObjectId);
-
-            var fileName = revision.Name;
-
-            if (Strings.IsNullOrEmpty(fileName))
-            {
-                fileName = FileName;
-            }
+            string fileName = GetFileNameForRevision(revision) ?? FileName;
 
             SetTitle(fileName);
 
@@ -401,24 +404,25 @@ namespace GitUI.CommandsDialogs
             {
                 Validates.NotNull(fileName);
                 View.Encoding = Diff.Encoding;
-                var file = new GitItemStatus(name: fileName)
+                GitItemStatus file = new(name: fileName)
                 {
                     IsTracked = true,
                     IsSubmodule = GitModule.IsValidGitWorkingDir(_fullPathResolver.Resolve(fileName))
                 };
-                View.ViewGitItemRevisionAsync(file, revision.ObjectId);
+                _ = View.ViewGitItemAsync(file, revision.ObjectId);
             }
             else if (tabControl1.SelectedTab == DiffTab)
             {
                 Validates.NotNull(fileName);
-                var file = new GitItemStatus(name: fileName)
+                GitItemStatus file = new(name: fileName)
                 {
                     IsTracked = true,
                     IsSubmodule = GitModule.IsValidGitWorkingDir(_fullPathResolver.Resolve(fileName))
                 };
                 var revisions = FileChanges.GetSelectedRevisions();
-                var item = new FileStatusItem(firstRev: revisions.Skip(1).LastOrDefault(), secondRev: revisions.FirstOrDefault(), file);
-                Diff.ViewChangesAsync(item, defaultText: "You need to select at least one revision to view diff.");
+                FileStatusItem item = new(firstRev: revisions.Skip(1).LastOrDefault(), secondRev: revisions.FirstOrDefault(), file);
+                _ = Diff.ViewChangesAsync(item, defaultText: "You need to select at least one revision to view diff.",
+                    cancellationToken: _viewChangesSequence.Next());
             }
             else if (tabControl1.SelectedTab == CommitInfoTabPage)
             {
@@ -458,7 +462,7 @@ namespace GitUI.CommandsDialogs
             var toolName = item?.Tag as string;
             var selectedRevisions = FileChanges.GetSelectedRevisions();
             var orgFileName = selectedRevisions.Count != 0
-                ? selectedRevisions[0].Name
+                ? GetFileNameForRevision(selectedRevisions[0])
                 : null;
 
             UICommands.OpenWithDifftool(this, selectedRevisions, FileName, orgFileName, diffKind, true, customTool: toolName);
@@ -470,21 +474,16 @@ namespace GitUI.CommandsDialogs
 
             if (selectedRows.Count > 0)
             {
-                string? orgFileName = selectedRows[0].Name;
-
-                if (Strings.IsNullOrEmpty(orgFileName))
-                {
-                    orgFileName = FileName;
-                }
+                string? orgFileName = GetFileNameForRevision(selectedRows[0]) ?? FileName;
 
                 string? fullName = _fullPathResolver.Resolve(orgFileName);
-                if (Strings.IsNullOrWhiteSpace(fullName))
+                if (string.IsNullOrWhiteSpace(fullName))
                 {
                     return;
                 }
 
                 fullName = fullName.ToNativePath();
-                using var fileDialog = new SaveFileDialog
+                using SaveFileDialog fileDialog = new()
                 {
                     InitialDirectory = Path.GetDirectoryName(fullName),
                     FileName = Path.GetFileName(fullName),

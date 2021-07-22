@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Settings;
 using GitUI.AutoCompletion;
+using GitUIPluginInterfaces.Settings;
 using Microsoft;
 using Microsoft.VisualStudio.Threading;
 using NetSpell.SpellChecker;
@@ -42,19 +43,19 @@ namespace GitUI.SpellChecker
         private static WordDictionary? _wordDictionary;
 
         private CancellationTokenSource _autoCompleteCancellationTokenSource = new();
-        private readonly List<IAutoCompleteProvider> _autoCompleteProviders = new List<IAutoCompleteProvider>();
+        private readonly List<IAutoCompleteProvider> _autoCompleteProviders = new();
         private AsyncLazy<IEnumerable<AutoCompleteWord>?>? _autoCompleteListTask;
         private bool _autoCompleteWasUserActivated;
         private bool _disableAutoCompleteTriggerOnTextUpdate = true; // only popup on key press
-        private readonly Dictionary<Keys, string> _keysToSendToAutoComplete = new Dictionary<Keys, string>
-                                                                     {
-                                                                             { Keys.Down, "{DOWN}" },
-                                                                             { Keys.Up, "{UP}" },
-                                                                             { Keys.PageUp, "{PGUP}" },
-                                                                             { Keys.PageDown, "{PGDN}" },
-                                                                             { Keys.End, "{END}" },
-                                                                             { Keys.Home, "{HOME}" }
-                                                                     };
+        private readonly Dictionary<Keys, string> _keysToSendToAutoComplete = new()
+        {
+            { Keys.Down, "{DOWN}" },
+            { Keys.Up, "{UP}" },
+            { Keys.PageUp, "{PGUP}" },
+            { Keys.PageDown, "{PGDN}" },
+            { Keys.End, "{END}" },
+            { Keys.Home, "{HOME}" }
+        };
 
         private readonly IWordAtCursorExtractor _wordAtCursorExtractor;
 
@@ -249,7 +250,7 @@ namespace GitUI.SpellChecker
 
         private ToolStripMenuItem AddContextMenuItem(string text, EventHandler eventHandler)
         {
-            var menuItem = new ToolStripMenuItem(text, null, eventHandler);
+            ToolStripMenuItem menuItem = new(text, null, eventHandler);
             SpellCheckContextMenu.Items.Add(menuItem);
             return menuItem;
         }
@@ -263,14 +264,17 @@ namespace GitUI.SpellChecker
         {
             try
             {
-                var dictionaryToolStripMenuItem = new ToolStripMenuItem(_dictionaryText.Text);
+                ToolStripMenuItem dictionaryToolStripMenuItem = new(_dictionaryText.Text);
                 SpellCheckContextMenu.Items.Add(dictionaryToolStripMenuItem);
 
-                var toolStripDropDown = new ContextMenuStrip();
+                ContextMenuStrip toolStripDropDown = new();
 
-                var noDicToolStripMenuItem = new ToolStripMenuItem("None");
+                ToolStripMenuItem noDicToolStripMenuItem = new("None");
                 noDicToolStripMenuItem.Click += DicToolStripMenuItemClick;
-                if (Settings.Dictionary == "None")
+
+                IDetachedSettings detachedSettings = Settings.Detached();
+
+                if (detachedSettings.Dictionary is "None")
                 {
                     noDicToolStripMenuItem.Checked = true;
                 }
@@ -279,14 +283,14 @@ namespace GitUI.SpellChecker
 
                 foreach (var fileName in Directory.GetFiles(AppSettings.GetDictionaryDir(), "*.dic", SearchOption.TopDirectoryOnly))
                 {
-                    var file = new FileInfo(fileName);
+                    FileInfo file = new(fileName);
 
                     var dic = file.Name.Replace(".dic", "");
 
-                    var dicToolStripMenuItem = new ToolStripMenuItem(dic);
+                    ToolStripMenuItem dicToolStripMenuItem = new(dic);
                     dicToolStripMenuItem.Click += DicToolStripMenuItemClick;
 
-                    if (Settings.Dictionary == dic)
+                    if (detachedSettings.Dictionary == dic)
                     {
                         dicToolStripMenuItem.Checked = true;
                     }
@@ -356,7 +360,8 @@ namespace GitUI.SpellChecker
                 return;
             }
 
-            string dictionaryFile = string.Concat(Path.Combine(AppSettings.GetDictionaryDir(), Settings.Dictionary), ".dic");
+            IDetachedSettings detachedSettings = Settings.Detached();
+            string dictionaryFile = string.Concat(Path.Combine(AppSettings.GetDictionaryDir(), detachedSettings.Dictionary), ".dic");
 
             if (_wordDictionary is null || _wordDictionary.DictionaryFile != dictionaryFile)
             {
@@ -532,7 +537,7 @@ namespace GitUI.SpellChecker
 
             AddContextMenuSeparator();
 
-            var mi = new ToolStripMenuItem(_markIllFormedLinesText.Text)
+            ToolStripMenuItem mi = new(_markIllFormedLinesText.Text)
             {
                 Checked = AppSettings.MarkIllFormedLinesInCommitMsg
             };
@@ -591,8 +596,10 @@ namespace GitUI.SpellChecker
             // it will set a dictionary only for this Module (repository) locally
 
             var settings = Module.LocalSettings ?? Settings;
+            IDetachedSettings detachedSettings = settings.Detached();
 
-            settings.Dictionary = ((ToolStripItem)sender).Text;
+            detachedSettings.Dictionary = ((ToolStripItem)sender).Text;
+
             LoadDictionary();
             CheckSpelling();
         }
@@ -637,7 +644,9 @@ namespace GitUI.SpellChecker
             {
                 OnTextChanged(e);
 
-                if (Settings.Dictionary == "None" || TextBox.Text.Length < 4)
+                IDetachedSettings detachedSettings = Settings.Detached();
+
+                if (detachedSettings.Dictionary is "None" || TextBox.Text.Length < 4)
                 {
                     return;
                 }

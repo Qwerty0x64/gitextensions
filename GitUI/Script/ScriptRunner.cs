@@ -40,14 +40,13 @@ namespace GitUI.Script
             }
             catch (ExternalOperationException ex) when (ex is not UserExternalOperationException)
             {
-                ThreadHelper.AssertOnUIThread();
                 throw new UserExternalOperationException($"{TranslatedStrings.ScriptErrorFailedToExecute}: '{scriptKey}'", ex);
             }
         }
 
         private static CommandStatus RunScriptInternal(IWin32Window owner, IGitModule module, string? scriptKey, IGitUICommands uiCommands, RevisionGridControl? revisionGrid)
         {
-            if (Strings.IsNullOrEmpty(scriptKey))
+            if (string.IsNullOrEmpty(scriptKey))
             {
                 return false;
             }
@@ -55,27 +54,25 @@ namespace GitUI.Script
             ScriptInfo? scriptInfo = ScriptManager.GetScript(scriptKey);
             if (scriptInfo is null)
             {
-                ThreadHelper.AssertOnUIThread();
                 throw new UserExternalOperationException($"{TranslatedStrings.ScriptErrorCantFind}: '{scriptKey}'",
-                    new ExternalOperationException(command: null, arguments: null, module.WorkingDir, innerException: null));
+                    new ExternalOperationException(workingDirectory: module.WorkingDir));
             }
 
-            if (Strings.IsNullOrEmpty(scriptInfo.Command))
+            if (string.IsNullOrEmpty(scriptInfo.Command))
             {
                 return false;
             }
 
             string? arguments = scriptInfo.Arguments;
-            if (!Strings.IsNullOrEmpty(arguments) && revisionGrid is null)
+            if (!string.IsNullOrEmpty(arguments) && revisionGrid is null)
             {
                 string? optionDependingOnSelectedRevision
                     = ScriptOptionsParser.Options.FirstOrDefault(option => ScriptOptionsParser.DependsOnSelectedRevision(option)
                                                                         && ScriptOptionsParser.Contains(arguments, option));
                 if (optionDependingOnSelectedRevision is not null)
                 {
-                    ThreadHelper.AssertOnUIThread();
                     throw new UserExternalOperationException($"{TranslatedStrings.ScriptText}: '{scriptKey}'{Environment.NewLine}'{optionDependingOnSelectedRevision}' {TranslatedStrings.ScriptErrorOptionWithoutRevisionGridText}",
-                        new ExternalOperationException(scriptInfo.Command, arguments, module.WorkingDir, innerException: null));
+                        new ExternalOperationException(scriptInfo.Command, arguments, module.WorkingDir));
                 }
             }
 
@@ -90,9 +87,8 @@ namespace GitUI.Script
             (string? argument, bool abort) = ScriptOptionsParser.Parse(scriptInfo.Arguments, module, owner, revisionGrid);
             if (abort)
             {
-                ThreadHelper.AssertOnUIThread();
                 throw new UserExternalOperationException($"{TranslatedStrings.ScriptText}: '{scriptKey}'{Environment.NewLine}{TranslatedStrings.ScriptErrorOptionWithoutRevisionText}",
-                    new ExternalOperationException(scriptInfo.Command, arguments, module.WorkingDir, innerException: null));
+                    new ExternalOperationException(scriptInfo.Command, arguments, module.WorkingDir));
             }
 
             Validates.NotNull(argument);
@@ -119,7 +115,7 @@ namespace GitUI.Script
                     {
                         if (string.Equals(plugin.Name, command, StringComparison.CurrentCultureIgnoreCase))
                         {
-                            var eventArgs = new GitUIEventArgs(owner, uiCommands);
+                            GitUIEventArgs eventArgs = new(owner, uiCommands);
                             return new CommandStatus(executed: true, needsGridRefresh: plugin.Execute(eventArgs));
                         }
                     }
@@ -136,9 +132,9 @@ namespace GitUI.Script
                 }
 
                 command = command.Replace(NavigateToPrefix, string.Empty);
-                if (!Strings.IsNullOrEmpty(command))
+                if (!string.IsNullOrEmpty(command))
                 {
-                    var revisionRef = new Executable(command, module.WorkingDir).GetOutputLines(argument).FirstOrDefault();
+                    string revisionRef = new Executable(command, module.WorkingDir).GetOutputLines(argument).FirstOrDefault();
 
                     if (revisionRef is not null)
                     {

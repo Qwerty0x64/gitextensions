@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
@@ -11,10 +11,8 @@ using GitUI.CommandsDialogs.SettingsDialog;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
 using GitUI.Infrastructure.Telemetry;
 using GitUI.NBugReports;
-using GitUI.Theming;
+using GitUIPluginInterfaces;
 using Microsoft.VisualStudio.Threading;
-using Microsoft.Win32;
-using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace GitExtensions
 {
@@ -44,6 +42,7 @@ namespace GitExtensions
 
             AppSettings.SetDocumentationBaseUrl(ThisAssembly.Git.Branch);
 
+#if SUPPORT_THEMES
             ThemeModule.Load();
             Application.ApplicationExit += (s, e) => ThemeModule.Unload();
 
@@ -60,6 +59,7 @@ namespace GitExtensions
                     }
                 }
             };
+#endif
 
             HighDpiMouseCursors.Enable();
 
@@ -67,7 +67,8 @@ namespace GitExtensions
             {
                 DiagnosticsClient.Initialize(ThisAssembly.Git.IsDirty);
 
-                if (!Debugger.IsAttached)
+                // If you want to suppress the BugReportInvoker when debugging and exit quickly, uncomment the condition:
+                ////if (!Debugger.IsAttached)
                 {
                     AppDomain.CurrentDomain.UnhandledException += (s, e) => BugReportInvoker.Report((Exception)e.ExceptionObject, e.IsTerminating);
                     Application.ThreadException += (s, e) => BugReportInvoker.Report(e.Exception, isTerminating: false);
@@ -103,6 +104,12 @@ namespace GitExtensions
                 ThreadHelper.JoinableTaskContext = new JoinableTaskContext();
             }
 
+            ManagedExtensibility.Initialise(new[]
+            {
+                typeof(GitUI.GitExtensionsForm).Assembly,
+                typeof(GitCommands.GitModule).Assembly
+            });
+
             AppSettings.LoadSettings();
 
             if (EnvUtils.RunningOnWindows())
@@ -113,7 +120,7 @@ namespace GitExtensions
 
             if (string.IsNullOrEmpty(AppSettings.Translation))
             {
-                using var formChoose = new FormChooseTranslation();
+                using FormChooseTranslation formChoose = new();
                 formChoose.ShowDialog();
             }
 
@@ -142,10 +149,10 @@ namespace GitExtensions
 
                     if (AppSettings.CheckSettings)
                     {
-                        var uiCommands = new GitUICommands("");
-                        var commonLogic = new CommonLogic(uiCommands.Module);
-                        var checkSettingsLogic = new CheckSettingsLogic(commonLogic);
-                        var fakePageHost = new SettingsPageHostMock(checkSettingsLogic);
+                        GitUICommands uiCommands = new("");
+                        CommonLogic commonLogic = new(uiCommands.Module);
+                        CheckSettingsLogic checkSettingsLogic = new(commonLogic);
+                        SettingsPageHostMock fakePageHost = new(checkSettingsLogic);
                         using var checklistSettingsPage = SettingsPageBase.Create<ChecklistSettingsPage>(fakePageHost);
                         if (!checklistSettingsPage.CheckSettings())
                         {
@@ -167,7 +174,7 @@ namespace GitExtensions
                 MouseWheelRedirector.Active = true;
             }
 
-            var commands = new GitUICommands(GetWorkingDir(args));
+            GitUICommands commands = new(GetWorkingDir(args));
 
             if (args.Length <= 1)
             {
@@ -269,7 +276,7 @@ namespace GitExtensions
                                 if (DialogResult.OK.Equals(MessageBox.Show(string.Format("Files have been deleted.{0}{0}Would you like to attempt to restart Git Extensions?", Environment.NewLine), "Configuration Error", MessageBoxButtons.OKCancel, MessageBoxIcon.Question)))
                                 {
                                     var args = Environment.GetCommandLineArgs();
-                                    var p = new System.Diagnostics.Process { StartInfo = { FileName = args[0] } };
+                                    Process p = new() { StartInfo = { FileName = args[0] } };
                                     if (args.Length > 1)
                                     {
                                         args[0] = "";
@@ -310,63 +317,38 @@ namespace GitExtensions
 
         private static bool LocateMissingGit()
         {
-            int dialogResult = -1;
-
-            using var dialog1 = new TaskDialog
+            TaskDialogPage page = new()
             {
-                InstructionText = ResourceManager.TranslatedStrings.GitExecutableNotFound,
-                Icon = TaskDialogStandardIcon.Error,
-                StandardButtons = TaskDialogStandardButtons.Cancel,
-                Cancelable = true,
+                Heading = ResourceManager.TranslatedStrings.GitExecutableNotFound,
+                Icon = TaskDialogIcon.Error,
+                Buttons = { TaskDialogButton.Cancel },
+                AllowCancel = true,
+                SizeToContent = true
             };
-            var btnFindGitExecutable = new TaskDialogCommandLink("FindGitExecutable", null, ResourceManager.TranslatedStrings.FindGitExecutable);
-            btnFindGitExecutable.Click += (s, e) =>
+            TaskDialogCommandLinkButton btnFindGitExecutable = new(ResourceManager.TranslatedStrings.FindGitExecutable);
+            TaskDialogCommandLinkButton btnInstallGitInstructions = new(ResourceManager.TranslatedStrings.InstallGitInstructions);
+            page.Buttons.Add(btnFindGitExecutable);
+            page.Buttons.Add(btnInstallGitInstructions);
+
+            TaskDialogButton result = TaskDialog.ShowDialog(page);
+            if (result == btnFindGitExecutable)
             {
-                dialogResult = 0;
-                dialog1.Close();
-            };
-            var btnInstallGitInstructions = new TaskDialogCommandLink("InstallGitInstructions", null, ResourceManager.TranslatedStrings.InstallGitInstructions);
-            btnInstallGitInstructions.Click += (s, e) =>
-            {
-                dialogResult = 1;
-                dialog1.Close();
-            };
-            dialog1.Controls.Add(btnFindGitExecutable);
-            dialog1.Controls.Add(btnInstallGitInstructions);
+                using OpenFileDialog dialog = new() { Filter = @"git.exe|git.exe|git.cmd|git.cmd" };
+                if (dialog.ShowDialog(null) == DialogResult.OK)
+                {
+                    AppSettings.GitCommandValue = dialog.FileName;
+                }
 
-            dialog1.Show();
-            switch (dialogResult)
-            {
-                case 0:
-                    {
-                        using var dialog = new OpenFileDialog
-                        {
-                            Filter = @"git.exe|git.exe|git.cmd|git.cmd",
-                        };
-                        if (dialog.ShowDialog(null) == DialogResult.OK)
-                        {
-                            AppSettings.GitCommandValue = dialog.FileName;
-                        }
-
-                        if (CheckSettingsLogic.SolveGitCommand())
-                        {
-                            return true;
-                        }
-
-                        return false;
-                    }
-
-                case 1:
-                    {
-                        OsShellUtil.OpenUrlInDefaultBrowser(@"https://github.com/gitextensions/gitextensions/wiki/Application-Dependencies#git");
-                        return false;
-                    }
-
-                default:
-                    {
-                        return false;
-                    }
+                return CheckSettingsLogic.SolveGitCommand();
             }
+
+            if (result == btnInstallGitInstructions)
+            {
+                OsShellUtil.OpenUrlInDefaultBrowser(@"https://github.com/gitextensions/gitextensions/wiki/Application-Dependencies#git");
+                return false;
+            }
+
+            return false;
         }
     }
 }

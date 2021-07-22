@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using GitCommands.UserRepositoryHistory;
-using GitExtUtils;
 
 namespace GitUI.CommandsDialogs
 {
@@ -24,7 +23,7 @@ namespace GitUI.CommandsDialogs
 
         public void RemoteUpdate(IList<Repository> remotes, string? oldRemoteUrl, string? newRemoteUrl)
         {
-            if (Strings.IsNullOrWhiteSpace(newRemoteUrl))
+            if (string.IsNullOrWhiteSpace(newRemoteUrl))
             {
                 return;
             }

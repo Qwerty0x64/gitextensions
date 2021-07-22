@@ -8,15 +8,16 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
-using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitExtUtils.GitUI.Theming;
+using GitUI.NBugReports;
 using GitUI.Properties;
 using GitUI.UserControls;
 using GitUIPluginInterfaces;
@@ -65,7 +66,7 @@ namespace GitUI
         [DefaultValue(false)]
         public bool DisableSubmoduleMenuItemBold { get; set; }
 
-        private readonly Dictionary<string, int> _stateImageIndexDict = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _stateImageIndexDict = new();
 
         public FileStatusList()
         {
@@ -87,9 +88,6 @@ namespace GitUI
 
             FileStatusListView.SmallImageList = CreateImageList();
             FileStatusListView.LargeImageList = FileStatusListView.SmallImageList;
-
-            FileStatusListView.AllowCollapseGroups = true;
-            FileStatusListView.Scroll += FileStatusListView_Scroll;
 
             HandleVisibility_NoFilesLabel_FilterComboBox(filesPresent: true);
             Controls.SetChildIndex(NoFiles, 0);
@@ -116,7 +114,7 @@ namespace GitUI
             {
                 const int rowHeight = 18;
 
-                var list = new ImageList
+                ImageList list = new()
                 {
                     ColorDepth = ColorDepth.Depth32Bit,
                     ImageSize = DpiUtil.Scale(new Size(16, rowHeight)), // Scale ImageSize and images scale automatically
@@ -156,7 +154,7 @@ namespace GitUI
                 static Bitmap ScaleHeight(Bitmap input)
                 {
                     Debug.Assert(input.Height < rowHeight, "Can only increase row height");
-                    var scaled = new Bitmap(input.Width, rowHeight, input.PixelFormat);
+                    Bitmap scaled = new(input.Width, rowHeight, input.PixelFormat);
                     using var g = Graphics.FromImage(scaled);
                     g.DrawImageUnscaled(input, 0, (rowHeight - input.Height) / 2);
 
@@ -166,7 +164,7 @@ namespace GitUI
 
             ToolStripMenuItem CreateOpenSubmoduleMenuItem()
             {
-                var item = new ToolStripMenuItem
+                ToolStripMenuItem item = new()
                 {
                     Name = "openSubmoduleMenuItem",
                     Tag = "1",
@@ -179,7 +177,7 @@ namespace GitUI
 
             ToolStripMenuItem CreateOpenInVisualStudioMenuItem()
             {
-                var item = new ToolStripMenuItem
+                ToolStripMenuItem item = new()
                 {
                     Name = "openInVisualStudioMenuItem",
                     Text = TranslatedStrings.OpenInVisualStudio,
@@ -243,12 +241,6 @@ namespace GitUI
         public IEnumerable<FileStatusItem> AllItems => FileStatusListView.ItemTags<FileStatusItem>();
 
         public int AllItemsCount => FileStatusListView.Items.Count;
-
-        public override ContextMenu ContextMenu
-        {
-            get => FileStatusListView.ContextMenu;
-            set => FileStatusListView.ContextMenu = value;
-        }
 
         public override ContextMenuStrip ContextMenuStrip
         {
@@ -536,7 +528,7 @@ namespace GitUI
 
             ListViewItem? FindPrevItemInGroups()
             {
-                var searchInGroups = new List<ListViewGroup>();
+                List<ListViewGroup> searchInGroups = new();
                 var foundCurrentGroup = false;
                 for (var i = FileStatusListView.Groups.Count - 1; i >= 0; i--)
                 {
@@ -570,7 +562,7 @@ namespace GitUI
 
             ListViewItem? FindNextItemInGroups()
             {
-                var searchInGroups = new List<ListViewGroup>();
+                List<ListViewGroup> searchInGroups = new();
                 var foundCurrentGroup = false;
                 for (var i = 0; i < FileStatusListView.Groups.Count; i++)
                 {
@@ -896,7 +888,8 @@ namespace GitUI
             if (updateCausedByFilter)
             {
                 previouslySelectedItems = FileStatusListView.SelectedItems()
-                    .ToHashSet(i => i.Tag<FileStatusItem>().Item);
+                    .Select(i => i.Tag<FileStatusItem>().Item)
+                    .ToHashSet();
 
                 DataSourceChanged?.Invoke(this, EventArgs.Empty);
             }
@@ -908,7 +901,7 @@ namespace GitUI
 
             bool hasChanges = GitItemStatusesWithDescription.Any(x => x.Statuses.Count > 0);
 
-            var list = new List<ListViewItem>();
+            List<ListViewItem> list = new();
             foreach (var i in GitItemStatusesWithDescription)
             {
                 ListViewGroup? group = null;
@@ -916,6 +909,7 @@ namespace GitUI
                 {
                     group = new ListViewGroup(i.Summary)
                     {
+                        CollapsedState = ListViewGroupCollapsedState.Expanded,
                         Tag = i.FirstRev
                     };
 
@@ -928,7 +922,7 @@ namespace GitUI
                     itemStatuses = _noItemStatuses;
                     if (group is not null)
                     {
-                        FileStatusListView.SetGroupState(group, NativeMethods.LVGS.Collapsible | NativeMethods.LVGS.Collapsed);
+                        group.CollapsedState = ListViewGroupCollapsedState.Collapsed;
                     }
                 }
                 else
@@ -943,7 +937,7 @@ namespace GitUI
                         continue;
                     }
 
-                    var listItem = new ListViewItem(string.Empty, group);
+                    ListViewItem listItem = new(string.Empty, group);
 
                     if (!item.IsStatusOnly || !string.IsNullOrWhiteSpace(item.ErrorMessage))
                     {
@@ -956,10 +950,11 @@ namespace GitUI
                     {
                         var capturedItem = item;
 
-                        ThreadHelper.JoinableTaskFactory.RunAsync(
-                        async () =>
+                        ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                         {
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
                             await task;
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
 
                             await this.SwitchToMainThreadAsync();
 
@@ -1105,18 +1100,28 @@ namespace GitUI
 
             int GetWidth()
             {
-                var pathFormatter = new PathFormatter(FileStatusListView.CreateGraphics(), FileStatusListView.Font);
-                var controlWidth = FileStatusListView.ClientSize.Width;
+                PathFormatter pathFormatter = new(FileStatusListView.CreateGraphics(), FileStatusListView.Font);
+                int controlWidth = FileStatusListView.ClientSize.Width;
 
-                var contentWidth = FileStatusListView.Items()
-                    .Where(item => item.BoundsOrEmpty().IntersectsWith(FileStatusListView.ClientRectangle))
-                    .Select(item =>
-                    {
-                        (_, _, _, _, int textStart, int textWidth, _) = FormatListViewItem(item, pathFormatter, FileStatusListView.ClientSize.Width);
-                        return textStart + textWidth;
-                    })
-                    .DefaultIfEmpty(controlWidth)
-                    .Max();
+                int contentWidth = 0;
+                try
+                {
+                    contentWidth = FileStatusListView.Items()
+                        .Where(item => item.BoundsOrEmpty().IntersectsWith(FileStatusListView.ClientRectangle))
+                        .Select(item =>
+                        {
+                            (_, _, _, _, int textStart, int textWidth, _) = FormatListViewItem(item, pathFormatter, FileStatusListView.ClientSize.Width);
+                            return textStart + textWidth;
+                        })
+                        .DefaultIfEmpty(controlWidth)
+                        .Max();
+                }
+                catch (ExternalException exception)
+                {
+                    // See https://github.com/gitextensions/gitextensions/issues/9166#issuecomment-849567022
+                    // A rather obscure bug report, which may be causing random app crashes
+                    BugReportInvoker.LogError(exception);
+                }
 
                 return Math.Max(contentWidth, controlWidth);
             }
@@ -1274,7 +1279,7 @@ namespace GitUI
                     Name = separatorKey,
                     Visible = mayBeMultipleRevs
                 });
-                var showAllDiferencesItem = new ToolStripMenuItem(TranslatedStrings.ShowDiffForAllParentsText)
+                ToolStripMenuItem showAllDiferencesItem = new(TranslatedStrings.ShowDiffForAllParentsText)
                 {
                     Checked = AppSettings.ShowDiffForAllParents,
                     ToolTipText = TranslatedStrings.ShowDiffForAllParentsTooltip,
@@ -1329,13 +1334,13 @@ namespace GitUI
         private void FileStatusListView_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
         {
             var item = e.Item;
-            var formatter = new PathFormatter(e.Graphics, FileStatusListView.Font);
+            PathFormatter formatter = new(e.Graphics, FileStatusListView.Font);
 
             var (image, prefix, text, suffix, prefixTextStartX, _, textMaxWidth) = FormatListViewItem(item, formatter, item.Bounds.Width);
 
             if (item.Selected)
             {
-                e.Graphics.FillRectangle(SystemBrushes.Highlight, e.Bounds);
+                e.Graphics.FillRectangle(Focused ? SystemBrushes.Highlight : OtherColors.InactiveSelectionHighlightBrush, e.Bounds);
             }
 
             if (image is not null)
@@ -1345,20 +1350,20 @@ namespace GitUI
 
             if (!string.IsNullOrEmpty(text))
             {
-                var textRect = new Rectangle(prefixTextStartX, item.Bounds.Top, textMaxWidth, item.Bounds.Height);
+                Rectangle textRect = new(prefixTextStartX, item.Bounds.Top, textMaxWidth, item.Bounds.Height);
 
-                Color grayTextColor = item.Selected
+                Color grayTextColor = item.Selected && Focused
                     ? ColorHelper.GetHighlightGrayTextColor(
                         backgroundColorName: KnownColor.Window,
                         textColorName: KnownColor.WindowText,
                         highlightColorName: KnownColor.Highlight)
                     : SystemColors.GrayText;
 
-                Color textColor = item.Selected
+                Color textColor = item.Selected && Focused
                     ? SystemColors.HighlightText
                     : SystemColors.WindowText;
 
-                if (!Strings.IsNullOrEmpty(prefix))
+                if (!string.IsNullOrEmpty(prefix))
                 {
                     DrawString(textRect, prefix, grayTextColor);
                     var prefixSize = formatter.MeasureString(prefix);
@@ -1367,7 +1372,7 @@ namespace GitUI
 
                 DrawString(textRect, text, textColor);
 
-                if (!Strings.IsNullOrEmpty(suffix))
+                if (!string.IsNullOrEmpty(suffix))
                 {
                     var textSize = formatter.MeasureString(text);
                     textRect.Offset(textSize.Width, 0);
@@ -1463,7 +1468,7 @@ namespace GitUI
             {
                 if (SelectedItems.Any())
                 {
-                    var fileList = new StringCollection();
+                    StringCollection fileList = new();
 
                     foreach (FileStatusItem item in SelectedItems)
                     {
@@ -1475,7 +1480,7 @@ namespace GitUI
                         }
                     }
 
-                    var obj = new DataObject();
+                    DataObject obj = new();
                     obj.SetFileDropList(fileList);
 
                     // Proceed with the drag and drop, passing in the list item.
@@ -1490,7 +1495,7 @@ namespace GitUI
                 ListViewItem? hoveredItem;
                 try
                 {
-                    var point = new Point(e.X, e.Y);
+                    Point point = new(e.X, e.Y);
                     hoveredItem = listView.HitTest(point).Item;
                 }
                 catch (ArgumentOutOfRangeException)
@@ -1558,7 +1563,7 @@ namespace GitUI
         #region Filtering
 
         private string _toolTipText = "";
-        private readonly Subject<string> _filterSubject = new Subject<string>();
+        private readonly Subject<string> _filterSubject = new();
         private Regex? _filter;
         private bool _filterVisible = false;
 
@@ -1791,7 +1796,7 @@ namespace GitUI
         private readonly Color _invalidInputColor = Color.FromArgb(0xFF, 0xC8, 0xC8).AdaptBackColor();
         #endregion
 
-        internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+        internal TestAccessor GetTestAccessor() => new(this);
 
         internal readonly struct TestAccessor
         {

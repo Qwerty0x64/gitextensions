@@ -118,7 +118,7 @@ namespace GitUI.HelperDialogs
 
         public static void ShowErrorDialog(IWin32Window owner, string text, params string[] output)
         {
-            using var form = new FormStatus(commands: null, new EditboxBasedConsoleOutputControl(), useDialogSettings: true);
+            using FormStatus form = new(commands: null, new EditboxBasedConsoleOutputControl(), useDialogSettings: true);
             form.Text = text;
             if (output?.Length > 0)
             {
@@ -166,25 +166,6 @@ namespace GitUI.HelperDialogs
             ConsoleOutput.AppendMessageFreeThreaded(text);
         }
 
-        private static Icon BitmapToIcon(Bitmap bitmap)
-        {
-            IntPtr handle = IntPtr.Zero;
-            try
-            {
-                handle = bitmap.GetHicon();
-                var icon = Icon.FromHandle(handle);
-
-                return (Icon)icon.Clone();
-            }
-            finally
-            {
-                if (handle != IntPtr.Zero)
-                {
-                    NativeMethods.DestroyIcon(handle);
-                }
-            }
-        }
-
         private protected void Done(bool isSuccess)
         {
             try
@@ -226,7 +207,7 @@ namespace GitUI.HelperDialogs
         private void SetIcon(Bitmap image)
         {
             Icon oldIcon = Icon;
-            Icon = BitmapToIcon(image);
+            Icon = image.ToIcon();
             oldIcon?.Dispose();
         }
 

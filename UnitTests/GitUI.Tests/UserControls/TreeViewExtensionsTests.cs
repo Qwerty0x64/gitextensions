@@ -1,13 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Windows.Forms;
 using FluentAssertions;
-using GitCommands;
-using GitCommands.Git;
-using GitUI.CommandsDialogs;
-using GitUI.Properties;
 using GitUI.UserControls;
-using JetBrains.Annotations;
-using NSubstitute;
 using NUnit.Framework;
 
 namespace GitUITests.UserControls
@@ -70,7 +64,7 @@ namespace GitUITests.UserControls
         [Test]
         public void RestoreExpandedNodesState_should_restore_no_nodes()
         {
-            var expandedNodes = new HashSet<string>();
+            HashSet<string> expandedNodes = new();
             _root.RestoreExpandedNodesState(expandedNodes);
 
             var expandedNodesPost = _root.GetExpandedNodesState();
@@ -80,7 +74,7 @@ namespace GitUITests.UserControls
         [Test]
         public void RestoreExpandedNodesState_should_restore_one_node()
         {
-            var expandedNodes = new HashSet<string> { @"Root\B" };
+            HashSet<string> expandedNodes = new() { @"Root\B" };
             _root.RestoreExpandedNodesState(expandedNodes);
 
             var expandedNodesPost = _root.GetExpandedNodesState();
@@ -91,7 +85,7 @@ namespace GitUITests.UserControls
         [Test]
         public void RestoreExpandedNodesState_should_restore_all_nodes()
         {
-            var expandedNodes = new HashSet<string>
+            HashSet<string> expandedNodes = new()
             {
                 $"{_root.GetFullNamePath()}",
                 $"{_a.GetFullNamePath()}",

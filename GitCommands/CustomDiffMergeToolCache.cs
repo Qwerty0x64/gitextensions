@@ -46,7 +46,7 @@ namespace GitCommands
         }
 
         /// <summary>
-        /// Load the availble DiffMerge tools and apply to the menus
+        /// Load the available DiffMerge tools and apply to the menus
         /// </summary>
         /// <param name="module">The Git module</param>
         /// <param name="delay">The delay before starting the operation</param>
@@ -88,7 +88,7 @@ namespace GitCommands
         /// <returns>list with tool names.</returns>
         private IEnumerable<string> ParseCustomDiffMergeTool(string output, string defaultTool)
         {
-            var tools = new List<string>();
+            List<string> tools = new();
 
             // Simple parsing of the textual output opposite to porcelain format
             // https://github.com/git/git/blob/main/git-mergetool--lib.sh#L298
@@ -109,7 +109,7 @@ namespace GitCommands
                     continue;
                 }
 
-                // two tabs, then toolname, cmd (if split in 3) in second
+                // two tabs, then tool name, cmd (if split in 3) in second
                 // cmd is unreliable for diff and not needed but could be used for mergetool special handling
                 string[] delimit = { " ", ".cmd" };
                 var tool = l.Substring(2).Split(delimit, 2, StringSplitOptions.None);
@@ -119,7 +119,7 @@ namespace GitCommands
                 }
 
                 // Ignore (known) tools that must run in a terminal
-                string[] ignoredTools = { "vimdiff", "vimdiff2", "vimdiff3" };
+                string[] ignoredTools = { "vimdiff", "vimdiff1", "vimdiff2", "vimdiff3" };
                 var toolName = tool[0];
                 if (!string.IsNullOrWhiteSpace(toolName) && !tools.Contains(toolName) && !ignoredTools.Contains(toolName))
                 {

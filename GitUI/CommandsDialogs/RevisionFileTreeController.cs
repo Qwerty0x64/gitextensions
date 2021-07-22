@@ -121,7 +121,7 @@ namespace GitUI.CommandsDialogs
 
                     case GitObjectType.Blob:
                         {
-                            var extension = PathUtil.GetExtension(gitItem.FileName);
+                            var extension = Path.GetExtension(gitItem.FileName);
 
                             if (string.IsNullOrWhiteSpace(extension))
                             {
@@ -151,7 +151,7 @@ namespace GitUI.CommandsDialogs
 
         public bool SelectFileOrFolder(NativeTreeView tree, string fileSubPath)
         {
-            var pathParts = new Queue<string>(fileSubPath.Split(Path.DirectorySeparatorChar));
+            Queue<string> pathParts = new(fileSubPath.Split(Path.DirectorySeparatorChar));
             var foundNode = FindSubNode(tree.Nodes, pathParts);
             if (foundNode is null)
             {

@@ -1,6 +1,5 @@
 ﻿using System;
 using ConEmu.WinForms;
-using GitExtUtils;
 
 namespace GitUI.Shells
 {
@@ -8,7 +7,7 @@ namespace GitUI.Shells
     {
         public static void ChangeFolder(this ConEmuControl? terminal, IShellDescriptor? shell, string? path)
         {
-            if (terminal?.RunningSession is null || shell is null || Strings.IsNullOrWhiteSpace(path))
+            if (terminal?.RunningSession is null || shell is null || string.IsNullOrWhiteSpace(path))
             {
                 return;
             }

@@ -6,7 +6,6 @@ using System.Linq;
 using System.Xml;
 using System.Xml.Serialization;
 using GitCommands.Settings;
-using GitExtUtils;
 
 namespace GitCommands.ExternalLinks
 {
@@ -55,9 +54,9 @@ namespace GitCommands.ExternalLinks
                         definition.RemoveEmptyFormats();
                     }
 
-                    var sw = new StringWriter();
-                    var serializer = new XmlSerializer(typeof(List<ExternalLinkDefinition>));
-                    var ns = new XmlSerializerNamespaces();
+                    StringWriter sw = new();
+                    XmlSerializer serializer = new(typeof(List<ExternalLinkDefinition>));
+                    XmlSerializerNamespaces ns = new();
                     ns.Add(string.Empty, string.Empty);
                     serializer.Serialize(sw, definitions.OrderBy(x => x.Name).ToList(), ns);
                     xml = sw.ToString();
@@ -71,19 +70,19 @@ namespace GitCommands.ExternalLinks
             }
         }
 
-        // TODO: refactor and outsource to the centralised SettingsSerialiser implementations.
+        // TODO: refactor and outsource to the centralised SettingsSerializer implementations.
         private static IReadOnlyList<ExternalLinkDefinition>? LoadFromXmlString(string? xmlString)
         {
-            if (Strings.IsNullOrWhiteSpace(xmlString))
+            if (string.IsNullOrWhiteSpace(xmlString))
             {
                 return Array.Empty<ExternalLinkDefinition>();
             }
 
             try
             {
-                var serializer = new XmlSerializer(typeof(List<ExternalLinkDefinition>));
-                using var stringReader = new StringReader(xmlString);
-                using var xmlReader = new XmlTextReader(stringReader);
+                XmlSerializer serializer = new(typeof(List<ExternalLinkDefinition>));
+                using StringReader stringReader = new(xmlString);
+                using XmlTextReader xmlReader = new(stringReader);
                 return serializer.Deserialize(xmlReader) as List<ExternalLinkDefinition>;
             }
             catch (Exception ex)

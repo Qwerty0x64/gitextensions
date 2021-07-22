@@ -1,5 +1,4 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using System.Windows.Forms;
 using FluentAssertions;
@@ -29,7 +28,7 @@ namespace GitUITests.Editor
 
         private void SetupLink(string prefix, string linkText, string uri, string suffix)
         {
-            var text = new StringBuilder();
+            StringBuilder text = new();
 
             if (prefix is not null)
             {
@@ -87,7 +86,7 @@ namespace GitUITests.Editor
         public void GetLink_should_return_null_if_right_of_link()
         {
             SetupDefaultLink();
-            for (int index = _defaultPrefix.Length + _defaultLinkText.Length; index < _rtb.Text.Length; ++index)
+            for (int index = _defaultPrefix.Length + _defaultLinkText.Length + _defaultLinkUri.Length + 1; index < _rtb.Text.Length; ++index)
             {
                 _rtb.GetLink(index).Should().BeNull();
             }
@@ -142,14 +141,14 @@ namespace GitUITests.Editor
         public void GetLink_should_return_uri_if_without_link_text()
         {
             SetupLink(_defaultPrefix, null, _defaultLinkUri, _defaultSuffix);
-            _rtb.GetLink(_defaultPrefix.Length).Should().Be(_defaultLinkUri);
+            _rtb.GetLink(_defaultPrefix.Length).Should().Be(null);
         }
 
         [Test]
         public void GetLink_should_return_uri_if_ends_with_link_without_link_text()
         {
             SetupLink(_defaultPrefix, null, _defaultLinkUri, suffix: null);
-            _rtb.GetLink(_defaultPrefix.Length).Should().Be(_defaultLinkUri);
+            _rtb.GetLink(_defaultPrefix.Length).Should().Be(null);
         }
     }
 }

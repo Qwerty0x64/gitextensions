@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Drawing;
-using System.IO;
 using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using GitCommands.Utils;
 
 namespace GitCommands
@@ -81,40 +79,7 @@ namespace GitCommands
                 // do nothing
             }
 
-            if (commitTemplateItem is null)
-            {
-                try
-                {
-                    int p = serializedString.IndexOf(':');
-                    int length = Convert.ToInt32(serializedString.Substring(0, p));
-
-                    byte[] memoryData = Convert.FromBase64String(serializedString.Substring(p + 1));
-                    using var rs = new MemoryStream(memoryData, 0, length);
-                    var sf = new BinaryFormatter { Binder = new MoveNamespaceDeserializationBinder() };
-                    commitTemplateItem = (CommitTemplateItem[])sf.Deserialize(rs);
-
-                    shouldBeUpdated = true;
-                }
-                catch
-                {
-                    return null;
-                }
-            }
-
             return commitTemplateItem;
-        }
-    }
-
-    public sealed class MoveNamespaceDeserializationBinder : SerializationBinder
-    {
-        private const string OldNamespace = "GitUI.CommandsDialogs.CommitDialog";
-        private const string NewNamespace = "GitCommands";
-
-        public override Type? BindToType(string assemblyName, string typeName)
-        {
-            typeName = typeName.Replace(OldNamespace, NewNamespace);
-
-            return Type.GetType($"{typeName}, {assemblyName}");
         }
     }
 }

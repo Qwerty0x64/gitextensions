@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Linq;
 using System.Threading;
@@ -32,13 +31,14 @@ namespace GitUI.UserControls.RevisionGrid
     public sealed class RevisionDataGridView : DataGridView
     {
         private readonly SolidBrush _alternatingRowBackgroundBrush;
+        private readonly SolidBrush _authoredHighlightBrush;
 
         internal RevisionGraph _revisionGraph = new();
 
-        private readonly List<ColumnProvider> _columnProviders = new List<ColumnProvider>();
+        private readonly List<ColumnProvider> _columnProviders = new();
         private readonly CancellationTokenSequence _backgroundCancellationSequence;
         private readonly AsyncQueue<(Func<CancellationToken, Task> backgroundOperation, CancellationToken cancellationToken)> _backgroundQueue =
-            new AsyncQueue<(Func<CancellationToken, Task> backgroundOperation, CancellationToken cancellationToken)>();
+            new();
         private CancellationToken _backgroundCancellationToken;
         private JoinableTask? _backgroundProcessingTask;
         private int _backgroundScrollTo;
@@ -65,8 +65,8 @@ namespace GitUI.UserControls.RevisionGrid
             InitializeComponent();
             DoubleBuffered = true;
 
-            _alternatingRowBackgroundBrush =
-                new SolidBrush(KnownColor.Window.MakeBackgroundDarkerBy(0.025)); // 0.018
+            _alternatingRowBackgroundBrush = new SolidBrush(KnownColor.Window.MakeBackgroundDarkerBy(0.025)); // 0.018
+            _authoredHighlightBrush = new SolidBrush(AppColor.AuthoredHighlight.GetThemeColor());
 
             UpdateRowHeight();
 
@@ -80,6 +80,8 @@ namespace GitUI.UserControls.RevisionGrid
             };
             Scroll += delegate { UpdateVisibleRowRange(); };
             Resize += delegate { UpdateVisibleRowRange(); };
+            GotFocus += (_, _) => InvalidateSelectedRows();
+            LostFocus += (_, _) => InvalidateSelectedRows();
             CellPainting += OnCellPainting;
             CellFormatting += (_, e) =>
             {
@@ -92,7 +94,6 @@ namespace GitUI.UserControls.RevisionGrid
                     }
                 }
             };
-            RowPrePaint += OnRowPrePaint;
 
             _revisionGraph.Updated += () =>
             {
@@ -117,18 +118,6 @@ namespace GitUI.UserControls.RevisionGrid
             Clear();
 
             return;
-
-            void OnRowPrePaint(object sender, DataGridViewRowPrePaintEventArgs e)
-            {
-                if (e.PaintParts.HasFlag(DataGridViewPaintParts.Background) &&
-                    e.RowBounds.Width > 0 &&
-                    e.RowBounds.Height > 0)
-                {
-                    // Draw row background
-                    var backBrush = GetBackground(e.State, e.RowIndex, null);
-                    e.Graphics.FillRectangle(backBrush, e.RowBounds);
-                }
-            }
 
             void InitializeComponent()
             {
@@ -156,6 +145,14 @@ namespace GitUI.UserControls.RevisionGrid
                 StandardTab = true;
                 ((ISupportInitialize)this).EndInit();
                 ResumeLayout(false);
+            }
+
+            void InvalidateSelectedRows()
+            {
+                for (int index = 0; index < SelectedRows.Count; ++index)
+                {
+                    InvalidateRow(SelectedRows[index].Index);
+                }
             }
         }
 
@@ -225,12 +222,12 @@ namespace GitUI.UserControls.RevisionGrid
         private Color GetForeground(DataGridViewElementStates state, int rowIndex)
         {
             bool isNonRelativeGray = AppSettings.RevisionGraphDrawNonRelativesTextGray && !RowIsRelative(rowIndex);
-            bool isSelected = state.HasFlag(DataGridViewElementStates.Selected);
-            return (isNonRelativeGray, isSelected) switch
+            bool isSelectedAndFocused = state.HasFlag(DataGridViewElementStates.Selected) && Focused;
+            return (isNonRelativeGray, isSelectedAndFocused) switch
             {
-                (isNonRelativeGray: false, isSelected: false) => SystemColors.ControlText,
-                (isNonRelativeGray: false, isSelected: true) => SystemColors.HighlightText,
-                (isNonRelativeGray: true, isSelected: false) => SystemColors.GrayText,
+                (isNonRelativeGray: false, isSelectedAndFocused: false) => SystemColors.ControlText,
+                (isNonRelativeGray: false, isSelectedAndFocused: true) => SystemColors.HighlightText,
+                (isNonRelativeGray: true, isSelectedAndFocused: false) => SystemColors.GrayText,
 
                 // (isGray: true, isSelected: true)
                 _ => getHighlightedGrayTextColor()
@@ -257,12 +254,12 @@ namespace GitUI.UserControls.RevisionGrid
         {
             if (state.HasFlag(DataGridViewElementStates.Selected))
             {
-                return SystemBrushes.Highlight;
+                return Focused ? SystemBrushes.Highlight : OtherColors.InactiveSelectionHighlightBrush;
             }
 
             if (AppSettings.HighlightAuthoredRevisions && revision is not null && !revision.IsArtificial && AuthorHighlighting?.IsHighlighted(revision) != false)
             {
-                return new SolidBrush(AppColor.AuthoredHighlight.GetThemeColor());
+                return _authoredHighlightBrush;
             }
 
             if (rowIndex % 2 == 0 && AppSettings.RevisionGraphDrawAlternateBackColor)
@@ -287,18 +284,19 @@ namespace GitUI.UserControls.RevisionGrid
                 return;
             }
 
+            Brush backBrush = GetBackground(e.State, e.RowIndex, revision);
+            e.Graphics.FillRectangle(backBrush, e.CellBounds);
+
             if (Columns[e.ColumnIndex].Tag is ColumnProvider provider)
             {
-                var backBrush = GetBackground(e.State, e.RowIndex, revision);
-                var foreColor = GetForeground(e.State, e.RowIndex);
-                var commitBodyForeColor = GetCommitBodyForeground(e.State, e.RowIndex);
+                Color foreColor = GetForeground(e.State, e.RowIndex);
+                Color commitBodyForeColor = GetCommitBodyForeground(e.State, e.RowIndex);
+                CellStyle cellStyle = new(backBrush, foreColor, commitBodyForeColor, _normalFont, _boldFont, _monospaceFont);
 
-                e.Graphics.FillRectangle(backBrush, e.CellBounds);
-                var cellStyle = new CellStyle(backBrush, foreColor, commitBodyForeColor, _normalFont, _boldFont, _monospaceFont);
                 provider.OnCellPainting(e, revision, _rowHeight, cellStyle);
-
-                e.Handled = true;
             }
+
+            e.Handled = true;
         }
 
         public void Add(GitRevision revision, RevisionNodeFlags types = RevisionNodeFlags.None)
@@ -337,6 +335,14 @@ namespace GitUI.UserControls.RevisionGrid
             Invalidate(invalidateChildren: true);
 
             StartBackgroundProcessingTask(cancellationToken);
+        }
+
+        public void LoadingCompleted()
+        {
+            foreach (ColumnProvider columnProvider in _columnProviders)
+            {
+                columnProvider.LoadingCompleted();
+            }
         }
 
         /// <summary>
@@ -462,12 +468,12 @@ namespace GitUI.UserControls.RevisionGrid
 
                 try
                 {
-                    CancellationToken timeoutToken;
+                    CancellationToken timeoutToken = CancellationToken.None;
                     Func<CancellationToken, Task> backgroundOperation;
                     CancellationToken backgroundOperationCancellation;
                     try
                     {
-                        using var timeoutTokenSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+                        using CancellationTokenSource timeoutTokenSource = new(TimeSpan.FromMilliseconds(200));
                         using var linkedCancellation = timeoutTokenSource.Token.CombineWith(cancellationToken);
                         timeoutToken = timeoutTokenSource.Token;
                         (backgroundOperation, backgroundOperationCancellation) = await _backgroundQueue.DequeueAsync(linkedCancellation.Token);

@@ -78,15 +78,15 @@ Current Branch:
             nameof(ScriptInfoProxy.Command),
             nameof(ScriptInfoProxy.Arguments),
         };
-        private static readonly ImageList EmbeddedIcons = new ImageList
+        private static readonly ImageList EmbeddedIcons = new()
         {
             ColorDepth = ColorDepth.Depth32Bit
         };
-        private readonly BindingList<ScriptInfoProxy> _scripts = new BindingList<ScriptInfoProxy>();
+        private readonly BindingList<ScriptInfoProxy> _scripts = new();
         private SimpleHelpDisplayDialog? _argumentsCheatSheet;
         private bool _handlingCheck;
 
-        // settings maybe loaded before page is shwon or after
+        // settings maybe loaded before page is shown or after
         // we need to track that so we load images before we bind the list
         private bool _imagsLoaded;
 
@@ -138,9 +138,9 @@ Current Branch:
                 return;
             }
 
-            var rm = new System.Resources.ResourceManager("GitUI.Properties.Images", Assembly.GetExecutingAssembly());
+            System.Resources.ResourceManager rm = new("GitUI.Properties.Images", Assembly.GetExecutingAssembly());
 
-            // dummy request; for some strange reason the ResourceSets are not loaded untill after the first object request... bug?
+            // dummy request; for some strange reason the ResourceSets are not loaded until after the first object request... bug?
             rm.GetObject("dummy");
 
             using System.Resources.ResourceSet resourceSet = rm.GetResourceSet(CultureInfo.CurrentUICulture, true, true);

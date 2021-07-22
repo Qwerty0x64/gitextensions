@@ -45,7 +45,7 @@ namespace GitCommands
         /// </summary>
         /// <param name="commitMessage">The commit message to write out.</param>
         /// <param name="messageType">The type of message to write out.</param>
-        /// <param name="usingCommitTemplate">The indicator whether a commit tempate is used.</param>
+        /// <param name="usingCommitTemplate">The indicator whether a commit template is used.</param>
         /// <param name="ensureCommitMessageSecondLineEmpty">The indicator whether empty second line is enforced.</param>
         void WriteCommitMessageToFile(string commitMessage, CommitMessageType messageType, bool usingCommitTemplate, bool ensureCommitMessageSecondLineEmpty);
     }
@@ -173,7 +173,7 @@ namespace GitCommands
                 return string.Empty;
             }
 
-            var formattedCommitMessage = new StringBuilder();
+            StringBuilder formattedCommitMessage = new();
 
             var lineNumber = 1;
             foreach (var line in commitMessage.LazySplit('\n'))

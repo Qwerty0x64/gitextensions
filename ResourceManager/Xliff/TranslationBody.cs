@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Xml.Serialization;
-using GitExtUtils;
 
 namespace ResourceManager.Xliff
 {
@@ -28,7 +27,7 @@ namespace ResourceManager.Xliff
 
         public void AddTranslationItemIfNotExist(TranslationItem translationItem)
         {
-            if (Strings.IsNullOrEmpty(translationItem.Name))
+            if (string.IsNullOrEmpty(translationItem.Name))
             {
                 throw new InvalidOperationException($"Cannot add {nameof(TranslationItem)} without name");
             }

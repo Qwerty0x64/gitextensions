@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Text;
 using BugReporter.Serialization;
-using GitExtUtils;
 
 namespace BugReporter
 {
@@ -19,7 +18,7 @@ namespace BugReporter
                 throw new ArgumentNullException(nameof(exception));
             }
 
-            var sb = new StringBuilder();
+            StringBuilder sb = new();
 
             sb.AppendLine(@"<!--
     :warning: Review existing issues to see whether someone else has already reported your issue.
@@ -47,7 +46,7 @@ namespace BugReporter
             sb.AppendLine();
             sb.AppendLine();
 
-            if (!Strings.IsNullOrWhiteSpace(additionalInfo))
+            if (!string.IsNullOrWhiteSpace(additionalInfo))
             {
                 sb.AppendLine("## Additional information");
                 sb.AppendLine(additionalInfo.Trim());
@@ -59,7 +58,7 @@ namespace BugReporter
             {
                 sb.AppendLine("## Environment");
 
-                if (!Strings.IsNullOrWhiteSpace(environmentInfo))
+                if (!string.IsNullOrWhiteSpace(environmentInfo))
                 {
                     sb.AppendLine(environmentInfo);
                 }

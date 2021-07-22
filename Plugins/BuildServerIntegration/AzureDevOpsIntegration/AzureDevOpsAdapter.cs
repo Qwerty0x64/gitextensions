@@ -14,7 +14,6 @@ using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
 using Microsoft;
 using Microsoft.VisualStudio.Threading;
-using Microsoft.WindowsAPICodePack.Dialogs;
 using ResourceManager;
 
 namespace AzureDevOpsIntegration
@@ -170,22 +169,19 @@ Detail of the error:");
                         {
                             ProjectOnErrorKey = CacheKey;
 
-                            var btnOpenSettings = new TaskDialogButton("btnOpenSettings", "Open settings");
-                            var btnIgnore = new TaskDialogButton("btnIgnoreError", "Ignore");
-                            using var errorDialog = new TaskDialog
+                            TaskDialogButton btnOpenSettings = new("Open settings");
+                            TaskDialogButton btnIgnore = new("Ignore");
+                            TaskDialogPage page = new()
                             {
-                                InstructionText = errorMessage,
-                                Icon = TaskDialogStandardIcon.Error,
-                                Cancelable = true,
+                                Heading = errorMessage,
+                                Icon = TaskDialogIcon.Error,
+                                AllowCancel = true,
                                 Caption = _buildIntegrationErrorCaption.Text,
-                                Controls = { btnOpenSettings, btnIgnore }
+                                Buttons = { btnOpenSettings, btnIgnore }
                             };
 
-                            btnOpenSettings.Click += (sender, e) => errorDialog.Close(TaskDialogResult.Yes);
-                            btnIgnore.Click += (sender, e) => errorDialog.Close(TaskDialogResult.No);
-
-                            var result = errorDialog.Show();
-                            if (result == TaskDialogResult.Yes)
+                            TaskDialogButton result = TaskDialog.ShowDialog(page);
+                            if (result == btnOpenSettings)
                             {
                                 ProjectOnErrorKey = null;
                                 Validates.NotNull(_openSettings);
@@ -286,7 +282,7 @@ Detail of the error:");
 
             Validates.NotNull(buildDetail.SourceVersion);
 
-            var buildInfo = new BuildInfo
+            BuildInfo buildInfo = new()
             {
                 Id = buildDetail.BuildNumber,
                 StartDate = buildDetail.StartTime ?? DateTime.MinValue,
@@ -320,7 +316,7 @@ Detail of the error:");
         }
 
         #region TestAccessor
-        internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+        internal TestAccessor GetTestAccessor() => new(this);
 
         internal readonly struct TestAccessor
         {

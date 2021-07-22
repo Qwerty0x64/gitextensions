@@ -27,20 +27,20 @@ namespace GitExtUtilsTests
         [Test]
         public void AdjustWidthToSize_should_throw_if_index_outside_table_columns_count()
         {
-            var table = new TableLayoutPanel
+            TableLayoutPanel table = new()
             {
                 ColumnCount = 3
             };
             ((Action)(() => table.AdjustWidthToSize(-1, Array.Empty<Control>()))).Should().Throw<ArgumentOutOfRangeException>()
-                .WithMessage("Column index must be within [0, 2] range\nParameter name: columnIndex\nActual value was -1.");
+                .WithMessage("Column index must be within [0, 2] range (Parameter 'columnIndex')\nActual value was -1.");
             ((Action)(() => table.AdjustWidthToSize(3, Array.Empty<Control>()))).Should().Throw<ArgumentOutOfRangeException>()
-                .WithMessage("Column index must be within [0, 2] range\nParameter name: columnIndex\nActual value was 3.");
+                .WithMessage("Column index must be within [0, 2] range (Parameter 'columnIndex')\nActual value was 3.");
         }
 
         [Test]
         public void AdjustWidthToSize_should_throw_if_no_widths_given()
         {
-            var table = new TableLayoutPanel
+            TableLayoutPanel table = new()
             {
                 ColumnCount = 3
             };
@@ -50,18 +50,18 @@ namespace GitExtUtilsTests
         [Test]
         public void AdjustWidthToSize_should_throw_if_no_widths_given1()
         {
-            var table = new TableLayoutPanel
+            TableLayoutPanel table = new()
             {
                 ColumnCount = 3
             };
             ((Action)(() => table.AdjustWidthToSize(0, Array.Empty<Control>()))).Should().Throw<ArgumentException>()
-                .WithMessage("At least one control is required\nParameter name: controls");
+                .WithMessage("At least one control is required (Parameter 'controls')");
         }
 
         [Test]
         public void AdjustWidthToSize_should_set_width_to_largest_value()
         {
-            var table = new TableLayoutPanel
+            TableLayoutPanel table = new()
             {
                 ColumnCount = 3
             };

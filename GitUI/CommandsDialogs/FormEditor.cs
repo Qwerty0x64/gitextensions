@@ -5,7 +5,6 @@ using System.Windows.Forms;
 using GitExtUtils;
 using GitExtUtils.GitUI.Theming;
 using GitUI.Editor;
-using GitUI.Theming;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
@@ -133,7 +132,7 @@ namespace GitUI.CommandsDialogs
 
         private void SaveChanges()
         {
-            if (!Strings.IsNullOrEmpty(_fileName))
+            if (!string.IsNullOrEmpty(_fileName))
             {
                 if (fileViewer.FilePreamble is null || Module.FilesEncoding.GetPreamble().SequenceEqual(fileViewer.FilePreamble))
                 {
@@ -141,7 +140,7 @@ namespace GitUI.CommandsDialogs
                 }
                 else
                 {
-                    using var bytes = new MemoryStream();
+                    using MemoryStream bytes = new();
                     bytes.Write(fileViewer.FilePreamble, 0, fileViewer.FilePreamble.Length);
                     using (var writer = new StreamWriter(bytes, Module.FilesEncoding))
                     {
@@ -172,7 +171,7 @@ namespace GitUI.CommandsDialogs
         }
 
         internal TestAccessor GetTestAccessor()
-            => new TestAccessor(this);
+            => new(this);
 
         internal readonly struct TestAccessor
         {

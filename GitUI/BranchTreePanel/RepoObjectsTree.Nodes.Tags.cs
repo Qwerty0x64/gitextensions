@@ -48,7 +48,7 @@ namespace GitUI.BranchTreePanel
 
             public bool Delete()
             {
-                return UICommands.StartDeleteTagDialog(TreeViewNode.TreeView, Name);
+                return UICommands.StartDeleteTagDialog(TreeViewNode.TreeView, FullPath);
             }
 
             public bool Merge()
@@ -68,7 +68,7 @@ namespace GitUI.BranchTreePanel
 
             public bool Checkout()
             {
-                using var form = new FormCheckoutRevision(UICommands);
+                using FormCheckoutRevision form = new(UICommands);
                 form.SetRevision(FullPath);
                 return form.ShowDialog(TreeViewNode.TreeView) != DialogResult.Cancel;
             }
@@ -119,7 +119,7 @@ namespace GitUI.BranchTreePanel
 
                 if (!IsFiltering.Value || _loadedTags is null)
                 {
-                    _loadedTags = Module.GetRefs(tags: true, branches: false);
+                    _loadedTags = Module.GetRefs(RefsFilter.Tags);
                     token.ThrowIfCancellationRequested();
                 }
 
@@ -128,14 +128,14 @@ namespace GitUI.BranchTreePanel
 
             private Nodes FillTagTree(IReadOnlyList<IGitRef> tags, CancellationToken token)
             {
-                var nodes = new Nodes(this);
-                var pathToNodes = new Dictionary<string, BaseBranchNode>();
+                Nodes nodes = new(this);
+                Dictionary<string, BaseBranchNode> pathToNodes = new();
                 foreach (IGitRef tag in tags)
                 {
                     token.ThrowIfCancellationRequested();
 
                     bool isVisible = !IsFiltering.Value || (tag.ObjectId is not null && _refsSource.Contains(tag.ObjectId));
-                    var tagNode = new TagNode(this, tag.ObjectId, tag.Name, isVisible);
+                    TagNode tagNode = new(this, tag.ObjectId, tag.Name, isVisible);
                     var parent = tagNode.CreateRootNode(pathToNodes, (tree, parentPath) => new BasePathNode(tree, parentPath));
                     if (parent is not null)
                     {

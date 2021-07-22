@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +5,6 @@ using System.Text;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 using GitCommands;
-using GitExtUtils;
 using GitUI.CommandsDialogs;
 using GitUI.Editor;
 using GitUI.Script;
@@ -20,12 +18,12 @@ namespace GitUI.Hotkey
         #region Serializer
         private static XmlSerializer? _serializer;
 
-        /// <summary>Lazy-loaded Serializer for HotkeySettings[]</summary>
+        /// <summary>Lazy-loaded Serializer for HotkeySettings[].</summary>
         private static XmlSerializer Serializer => _serializer ??= new XmlSerializer(typeof(HotkeySettings[]), new[] { typeof(HotkeyCommand) });
 
         #endregion
 
-        private static readonly HashSet<Keys> _usedKeys = new HashSet<Keys>();
+        private static readonly HashSet<Keys> _usedKeys = new();
 
         /// <summary>
         /// Returns whether the hotkey is already assigned.
@@ -37,8 +35,8 @@ namespace GitUI.Hotkey
 
         public static HotkeyCommand[] LoadHotkeys(string name)
         {
-            var settings = new HotkeySettings();
-            var scriptKeys = new HotkeySettings();
+            HotkeySettings settings = new();
+            HotkeySettings scriptKeys = new();
             var allSettings = LoadSettings();
 
             UpdateUsedKeys(allSettings);
@@ -93,15 +91,15 @@ namespace GitUI.Hotkey
             }
         }
 
-        /// <summary>Serializes and saves the supplied settings</summary>
+        /// <summary>Serializes and saves the supplied settings.</summary>
         public static void SaveSettings(HotkeySettings[] settings)
         {
             try
             {
                 UpdateUsedKeys(settings);
 
-                var str = new StringBuilder();
-                using var writer = new StringWriter(str);
+                StringBuilder str = new();
+                using StringWriter writer = new(str);
                 Serializer.Serialize(writer, settings);
                 AppSettings.SerializedHotkeys = str.ToString();
             }
@@ -118,7 +116,7 @@ namespace GitUI.Hotkey
                 return;
             }
 
-            var defaultCommands = new Dictionary<string, HotkeyCommand>();
+            Dictionary<string, HotkeyCommand> defaultCommands = new();
 
             FillDictionaryWithCommands();
             AssignHotkeysFromLoaded();
@@ -163,7 +161,7 @@ namespace GitUI.Hotkey
         {
             MigrateSettings();
 
-            if (!Strings.IsNullOrWhiteSpace(AppSettings.SerializedHotkeys))
+            if (!string.IsNullOrWhiteSpace(AppSettings.SerializedHotkeys))
             {
                 return LoadSerializedSettings(AppSettings.SerializedHotkeys);
             }
@@ -175,7 +173,7 @@ namespace GitUI.Hotkey
         {
             try
             {
-                using var reader = new StringReader(serializedHotkeys);
+                using StringReader reader = new(serializedHotkeys);
                 return (HotkeySettings[])Serializer.Deserialize(reader);
             }
             catch
@@ -210,7 +208,7 @@ namespace GitUI.Hotkey
 
         public static HotkeySettings[] CreateDefaultSettings()
         {
-            HotkeyCommand Hk(object en, Keys k) => new HotkeyCommand((int)en, en.ToString()) { KeyData = k };
+            HotkeyCommand Hk(object en, Keys k) => new((int)en, en.ToString()) { KeyData = k };
 
             const Keys OpenWithDifftoolHotkey = Keys.F3;
             const Keys OpenWithDifftoolFirstToLocalHotkey = Keys.Alt | Keys.F3;
@@ -363,6 +361,11 @@ namespace GitUI.Hotkey
                     Hk(RevisionFileTreeControl.Command.OpenAsTempFileWith, OpenAsTempFileWithHotkey),
                     Hk(RevisionFileTreeControl.Command.OpenWithDifftool, OpenWithDifftoolHotkey),
                     Hk(RevisionFileTreeControl.Command.ShowHistory, ShowHistoryHotkey)),
+                new HotkeySettings(
+                    FormStash.HotkeySettingsName,
+                    Hk(FormStash.Command.NextStash, Keys.Control | Keys.N),
+                    Hk(FormStash.Command.PreviousStash, Keys.Control | Keys.P),
+                    Hk(FormStash.Command.Refresh, Keys.F5)),
                 new HotkeySettings(
                     FormSettings.HotkeySettingsName,
                     LoadScriptHotkeys())

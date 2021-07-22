@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Windows.Forms;
 using GitExtUtils.GitUI;
 using ICSharpCode.TextEditor;
 
@@ -17,7 +16,7 @@ namespace GitUI.Editor
         private List<Image?>? _avatars;
         private readonly Color _backgroundColor;
         private List<GitBlameEntry>? _blameLines;
-        private readonly Dictionary<int, SolidBrush> _brushs = new Dictionary<int, SolidBrush>();
+        private readonly Dictionary<int, SolidBrush> _brushs = new();
         private bool _isVisible = true;
 
         public BlameAuthorMargin(TextArea textArea) : base(textArea)

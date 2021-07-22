@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using GitCommands.Git;
@@ -18,7 +17,7 @@ namespace GitUI.HelperDialogs
         private readonly TranslationString _localRefInvalid = new("The entered value '{0}' is not the name of an existing local branch.");
 
         public static FormResetAnotherBranch Create(GitUICommands gitUiCommands, GitRevision revision)
-            => new FormResetAnotherBranch(gitUiCommands, revision ?? throw new NotSupportedException(TranslatedStrings.NoRevision));
+            => new(gitUiCommands, revision ?? throw new NotSupportedException(TranslatedStrings.NoRevision));
 
         [Obsolete("For VS designer and translation test only. Do not remove.")]
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
@@ -66,7 +65,7 @@ namespace GitUI.HelperDialogs
 
             var selectedRevisionRemotes = _revision.Refs.Where(r => r.IsRemote).ToList();
 
-            return Module.GetRefs(false)
+            return Module.GetRefs(RefsFilter.Heads)
                 .Where(r => r.IsHead)
                 .Where(r => isDetachedHead || r.LocalName != currentBranch)
                 .OrderByDescending(r => selectedRevisionRemotes.Any(r.IsTrackingRemote)) // Put local branches that track these remotes first

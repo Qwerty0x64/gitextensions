@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands.Settings
@@ -98,7 +97,7 @@ namespace GitCommands.Settings
         public void SetPathValue(string setting, string? value)
         {
             // for using unc paths -> these need to be backward slashes
-            if (!Strings.IsNullOrWhiteSpace(value) && !value.StartsWith("\\\\"))
+            if (!string.IsNullOrWhiteSpace(value) && !value.StartsWith("\\\\"))
             {
                 value = value.ToPosixPath();
             }

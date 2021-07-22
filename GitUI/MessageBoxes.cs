@@ -2,7 +2,6 @@
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
-using Microsoft.WindowsAPICodePack.Dialogs;
 using ResourceManager;
 
 namespace GitUI
@@ -30,7 +29,7 @@ namespace GitUI
         private readonly TranslationString _pageantNotFound = new("Cannot load SSH key. PuTTY is not configured properly.");
 
         private readonly TranslationString _serverHostkeyNotCachedText =
-            new TranslationString("The server's host key is not cached in the registry.\n\nDo you want to trust this host key and then try again?");
+            new("The server's host key is not cached in the registry.\n\nDo you want to trust this host key and then try again?");
 
         private readonly TranslationString _updateSubmodules = new("Update submodules");
         private readonly TranslationString _theRepositorySubmodules = new("Update submodules on checkout?");
@@ -93,21 +92,22 @@ namespace GitUI
 
         public static bool ConfirmUpdateSubmodules(IWin32Window? owner)
         {
-            using var dialog = new TaskDialog
+            TaskDialogPage page = new()
             {
-                OwnerWindowHandle = owner?.Handle ?? IntPtr.Zero,
                 Text = Instance._updateSubmodulesToo.Text,
-                InstructionText = Instance._theRepositorySubmodules.Text,
+                Heading = Instance._theRepositorySubmodules.Text,
                 Caption = Instance._updateSubmodules.Text,
-                Icon = TaskDialogStandardIcon.Information,
-                StandardButtons = TaskDialogStandardButtons.Yes | TaskDialogStandardButtons.No,
-                FooterCheckBoxText = Instance._rememberChoice.Text,
-                FooterIcon = TaskDialogStandardIcon.Information,
-                StartupLocation = TaskDialogStartupLocation.CenterOwner
+                Icon = TaskDialogIcon.Information,
+                Buttons = { TaskDialogButton.Yes, TaskDialogButton.No },
+                Verification = new TaskDialogVerificationCheckBox
+                {
+                    Text = Instance._rememberChoice.Text
+                },
+                SizeToContent = true
             };
 
-            bool result = dialog.Show() == TaskDialogResult.Yes;
-            if (dialog.FooterCheckBoxChecked == true)
+            bool result = TaskDialog.ShowDialog(owner?.Handle ?? IntPtr.Zero, page) == TaskDialogButton.Yes;
+            if (page.Verification.Checked)
             {
                 AppSettings.DontConfirmUpdateSubmodulesOnCheckout = result;
                 AppSettings.UpdateSubmodulesOnCheckout = result;

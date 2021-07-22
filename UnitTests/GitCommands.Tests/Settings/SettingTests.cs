@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.IO;
 using GitCommands;
@@ -13,17 +14,28 @@ namespace GitCommandsTests.Settings
     {
         private const string SettingsFileContent = @"<?xml version=""1.0"" encoding=""utf-8""?><dictionary />";
 
-        private string _settingFilePath;
-        private RepoDistSettings _settingContainer;
+        private static readonly TempFileCollection _tempFiles = new();
+        private static string _settingFilePath;
+        private static GitExtSettingsCache _gitExtSettingsCache;
+        private static RepoDistSettings _settingContainer;
 
-        [SetUp]
-        public void SetUp()
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
         {
-            _settingFilePath = Path.GetTempFileName();
+            _settingFilePath = _tempFiles.AddExtension(".settings");
+            _tempFiles.AddFile(_settingFilePath + ".backup", keepFile: false);
 
             File.WriteAllText(_settingFilePath, SettingsFileContent);
 
-            _settingContainer = new RepoDistSettings(null, GitExtSettingsCache.Create(_settingFilePath), SettingLevel.Unknown);
+            _gitExtSettingsCache = GitExtSettingsCache.Create(_settingFilePath);
+            _settingContainer = new RepoDistSettings(null, _gitExtSettingsCache, SettingLevel.Unknown);
+        }
+
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
+        {
+            _gitExtSettingsCache.Dispose();
+            ((IDisposable)_tempFiles).Dispose();
         }
 
         #region Setting
@@ -36,7 +48,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<T>(settingsPath, settingName, settingDefault);
@@ -59,7 +71,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             T storedValue = default;
 
@@ -73,11 +85,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -98,7 +111,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -130,7 +143,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -164,7 +177,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             T storedValue = default;
 
@@ -188,7 +201,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             T storedValue = default;
 
@@ -202,11 +215,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -230,7 +244,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create(settingsPath, settingName, settingDefault);
@@ -252,7 +266,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             string storedValue = null;
 
             // Act
@@ -265,11 +279,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -289,7 +304,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -320,7 +335,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -356,7 +371,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<bool>(settingsPath, settingName);
@@ -380,7 +395,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<bool>(settingsPath, settingName);
@@ -405,7 +420,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -438,7 +453,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -470,7 +485,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             bool? storedValue = null;
 
@@ -492,7 +507,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             bool? storedValue = null;
 
@@ -506,11 +521,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -533,7 +549,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<char>(settingsPath, settingName);
@@ -557,7 +573,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<char>(settingsPath, settingName);
@@ -582,7 +598,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -615,7 +631,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -647,7 +663,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             char? storedValue = null;
 
@@ -669,7 +685,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             char? storedValue = null;
 
@@ -683,11 +699,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -710,7 +727,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<byte>(settingsPath, settingName);
@@ -735,7 +752,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<byte>(settingsPath, settingName);
@@ -761,7 +778,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -795,7 +812,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -827,7 +844,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             byte? storedValue = null;
 
@@ -849,7 +866,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             byte? storedValue = null;
 
@@ -863,11 +880,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -890,7 +908,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<int>(settingsPath, settingName);
@@ -915,7 +933,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<int>(settingsPath, settingName);
@@ -941,7 +959,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -975,7 +993,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -1007,7 +1025,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             int? storedValue = null;
 
@@ -1029,7 +1047,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             int? storedValue = null;
 
@@ -1043,11 +1061,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -1070,7 +1089,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<float>(settingsPath, settingName);
@@ -1095,7 +1114,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<float>(settingsPath, settingName);
@@ -1121,7 +1140,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -1155,7 +1174,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -1187,7 +1206,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             float? storedValue = null;
 
@@ -1209,7 +1228,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             float? storedValue = null;
 
@@ -1223,11 +1242,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -1250,7 +1270,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<TestEnum>(settingsPath, settingName);
@@ -1274,7 +1294,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<TestEnum>(settingsPath, settingName);
@@ -1300,7 +1320,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             string storedValue = string.Empty;
 
@@ -1314,11 +1334,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -1341,7 +1362,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -1374,7 +1395,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             var updated = false;
 
             // Act
@@ -1406,7 +1427,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             TestEnum? storedValue = null;
 
@@ -1428,7 +1449,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             TestEnum? storedValue = null;
 
@@ -1442,11 +1463,12 @@ namespace GitCommandsTests.Settings
                 AppSettings.SaveSettings();
             });
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
 
             File.WriteAllText(filePath, File.ReadAllText(_settingFilePath));
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            RepoDistSettings container = new(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
 
             AppSettings.UsingContainer(container, () =>
             {
@@ -1475,7 +1497,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
 
             // Act
             var setting = Setting.Create<TestStruct>(settingsPath, settingName);
@@ -1496,7 +1518,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             TestStruct? value = new TestStruct
             {
                 Bool = false,
@@ -1527,7 +1549,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             TestStruct? value = new TestStruct
             {
                 Bool = false,
@@ -1566,7 +1588,7 @@ namespace GitCommandsTests.Settings
             // Arrange
             var pathName = Guid.NewGuid().ToString();
             var settingName = Guid.NewGuid().ToString();
-            var settingsPath = new AppSettingsPath(pathName);
+            AppSettingsPath settingsPath = new(pathName);
             TestStruct? value = new TestStruct
             {
                 Bool = false,

@@ -26,6 +26,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
         private readonly TranslationString _strUnableUnderstandPatch = new("Error: Unable to understand patch");
         private readonly TranslationString _strRemoteAlreadyExist = new("ERROR: Remote with name {0} already exists but it points to a different repository!\r\nDetails: Is {1} expected {2}");
         private readonly TranslationString _strCouldNotAddRemote = new("Could not add remote with name {0} and URL {1}");
+        private readonly TranslationString _strRemoteIgnore = new("Remote ignored");
         #endregion
 
         private GitProtocol _cloneGitProtocol;
@@ -73,22 +74,35 @@ namespace GitUI.CommandsDialogs.RepoHosting
             _loader.LoadAsync(
                 () =>
                 {
-                    var t = _gitHoster.GetHostedRemotesForModule().ToList();
-                    foreach (var el in t)
+                    var hostedRemotes = _gitHoster.GetHostedRemotesForModule().ToArray();
+
+                    // load all hosted repositories.
+                    foreach (var hostedRemote in hostedRemotes)
                     {
-                        el.GetHostedRepository(); // We do this now because we want to do it in the async part.
+                        try
+                        {
+                            hostedRemote.GetHostedRepository(); // We do this now because we want to do it in the async part.
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.ShowDialog(new TaskDialogPage
+                            {
+                                Icon = TaskDialogIcon.Error,
+                                Caption = _strRemoteIgnore.Text,
+                                Text = string.Format(TranslatedStrings.RemoteInError, ex.Message, hostedRemote.DisplayData),
+                                Buttons = { TaskDialogButton.OK },
+                                SizeToContent = true
+                            });
+                        }
                     }
 
-                    return t;
+                    return hostedRemotes;
                 },
                 hostedRemotes =>
                 {
                     _hostedRemotes = hostedRemotes;
                     _selectHostedRepoCB.Items.Clear();
-                    foreach (var hostedRepo in _hostedRemotes)
-                    {
-                        _selectHostedRepoCB.Items.Add(hostedRepo);
-                    }
+                    _selectHostedRepoCB.Items.AddRange(hostedRemotes);
 
                     SelectHostedRepositoryForCurrentRemote();
                     this.UnMask();
@@ -99,9 +113,22 @@ namespace GitUI.CommandsDialogs.RepoHosting
         {
             var hostedRemote = _selectHostedRepoCB.SelectedItem as IHostedRemote;
 
-            var hostedRepo = hostedRemote?.GetHostedRepository();
+            _pullRequestsList.Items.Clear();
+            IHostedRepository? hostedRepo;
+            try
+            {
+                hostedRepo = hostedRemote?.GetHostedRepository();
+            }
+            catch (Exception)
+            {
+                // if fails to load this remote, select the next one
+                SelectNextHostedRepositoryIfFirstLoad();
+                return;
+            }
+
             if (hostedRepo is null)
             {
+                SelectNextHostedRepositoryIfFirstLoad();
                 return;
             }
 
@@ -128,6 +155,14 @@ namespace GitUI.CommandsDialogs.RepoHosting
                     }
                 })
                 .FileAndForget();
+
+            void SelectNextHostedRepositoryIfFirstLoad()
+            {
+                if (_isFirstLoad)
+                {
+                    SelectNextHostedRepository();
+                }
+            }
         }
 
         private void FileViewer_TopScrollReached(object sender, EventArgs e)
@@ -146,11 +181,14 @@ namespace GitUI.CommandsDialogs.RepoHosting
         {
             if (_isFirstLoad)
             {
-                _isFirstLoad = false;
                 if (infos is not null && infos.Count == 0 && _hostedRemotes is not null && _hostedRemotes.Count > 0)
                 {
                     SelectNextHostedRepository();
                     return;
+                }
+                else
+                {
+                    _isFirstLoad = false;
                 }
             }
 
@@ -202,7 +240,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
             int i = _selectHostedRepoCB.SelectedIndex + 1;
             if (i >= _selectHostedRepoCB.Items.Count)
             {
-                i = 0;
+                return;
             }
 
             _selectHostedRepoCB.SelectedIndex = i;
@@ -357,7 +395,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
             _diffCache = new Dictionary<string, string>();
 
             var fileParts = Regex.Split(diffData, @"(?:\n|^)diff --git ").Where(el => el is not null && el.Trim().Length > 10).ToList();
-            var giss = new List<GitItemStatus>();
+            List<GitItemStatus> giss = new();
 
             // baseSha is the sha of the merge to ("master") sha, the commit to be firstId
             GitRevision? firstRev = ObjectId.TryParse(baseSha, out ObjectId? firstId) ? new GitRevision(firstId) : null;
@@ -377,7 +415,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
                     return;
                 }
 
-                var gis = new GitItemStatus(name: match.Groups[2].Value.Trim())
+                GitItemStatus gis = new(name: match.Groups[2].Value.Trim())
                 {
                     IsChanged = true,
                     IsNew = false,

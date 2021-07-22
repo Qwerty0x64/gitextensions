@@ -19,7 +19,7 @@ namespace GitUI.UserControls.RevisionGrid.Graph
     // The RevisionGraphRow contains an ordered list of Segments that crosses the row or connects to the revision in the row.
     // The segments can be returned in the order how it is stored.
     // Segments are not the same as lanes.A crossing segment is a lane, but multiple segments can connect to the revision.
-    // Therefor, a single lane can have multiple segments.
+    // Therefore, a single lane can have multiple segments.
     public class RevisionGraphRow : IRevisionGraphRow
     {
         public RevisionGraphRow(RevisionGraphRevision revision, IReadOnlyList<RevisionGraphSegment> segments)
@@ -33,22 +33,22 @@ namespace GitUI.UserControls.RevisionGrid.Graph
         public IReadOnlyList<RevisionGraphSegment> Segments { get; }
 
         /// <summary>
-        /// This dictonary contains a cached list of all segments and the lane index the segment is in for this row.
+        /// This dictionary contains a cached list of all segments and the lane index the segment is in for this row.
         /// </summary>
         private IDictionary<RevisionGraphSegment, int>? _segmentLanes;
 
         /// <summary>
-        /// Contains the gaps created by <cref>MoveLanesRight</cref>
+        /// Contains the gaps created by. <cref>MoveLanesRight</cref>
         /// </summary>
-        private HashSet<int> _gaps = new();
+        private HashSet<int>? _gaps;
 
         /// <summary>
-        /// The cached lanecount
+        /// The cached lanecount.
         /// </summary>
         private int _laneCount;
 
         /// <summary>
-        /// The cached revisionlane
+        /// The cached revisionlane.
         /// </summary>
         private int _revisionLane;
 
@@ -64,7 +64,7 @@ namespace GitUI.UserControls.RevisionGrid.Graph
                 return;
             }
 
-            // We do not want SegementLanes to be build multiple times. Lock it.
+            // We do not want SegmentLanes to be build multiple times. Lock it.
             lock (Revision)
             {
                 // Another thread could be waiting for the lock, while the segmentlanes were being built. Check again if segmentslanes is null.
@@ -185,7 +185,7 @@ namespace GitUI.UserControls.RevisionGrid.Graph
 
         public void MoveLanesRight(int fromLane)
         {
-            int nextGap = _gaps.Min(lane => lane > fromLane ? lane : null) ?? int.MaxValue;
+            int nextGap = _gaps?.Min(lane => lane > fromLane ? lane : null) ?? int.MaxValue;
 
             if (_revisionLane >= fromLane && _revisionLane < nextGap)
             {
@@ -201,6 +201,7 @@ namespace GitUI.UserControls.RevisionGrid.Graph
                 return;
             }
 
+            _gaps ??= new();
             _gaps.Add(fromLane);
             if (nextGap < int.MaxValue)
             {

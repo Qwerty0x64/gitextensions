@@ -19,8 +19,10 @@ namespace GitUI.UserControls.RevisionGrid.Graph
         private const int _straightenLanesLookAhead = 20;
 
         // Some unordered collections with raw data
-        private ConcurrentDictionary<ObjectId, RevisionGraphRevision> _nodeByObjectId = new ConcurrentDictionary<ObjectId, RevisionGraphRevision>();
+        private ConcurrentDictionary<ObjectId, RevisionGraphRevision> _nodeByObjectId = new();
         private ImmutableList<RevisionGraphRevision> _nodes = ImmutableList<RevisionGraphRevision>.Empty;
+
+        private bool _loadingCompleted;
 
         /// <summary>
         /// The max score is used to keep a chronological order during the graph building.
@@ -48,11 +50,17 @@ namespace GitUI.UserControls.RevisionGrid.Graph
 
         public void Clear()
         {
+            _loadingCompleted = false;
             _maxScore = 0;
             _nodeByObjectId = new ConcurrentDictionary<ObjectId, RevisionGraphRevision>();
             _nodes = ImmutableList<RevisionGraphRevision>.Empty;
             _orderedNodesCache = null;
             _orderedRowCache = null;
+        }
+
+        public void LoadingCompleted()
+        {
+            _loadingCompleted = true;
         }
 
         public int Count => _nodes.Count;
@@ -73,7 +81,7 @@ namespace GitUI.UserControls.RevisionGrid.Graph
             }
 
             int cachedCount = _orderedRowCache.Count;
-            return cachedCount == Count ? cachedCount : cachedCount - _straightenLanesLookAhead;
+            return _loadingCompleted ? cachedCount : cachedCount - _straightenLanesLookAhead;
         }
 
         /// <summary>
@@ -457,7 +465,7 @@ namespace GitUI.UserControls.RevisionGrid.Graph
             }
         }
 
-        internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+        internal TestAccessor GetTestAccessor() => new(this);
 
         internal readonly struct TestAccessor
         {

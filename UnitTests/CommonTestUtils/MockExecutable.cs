@@ -15,9 +15,9 @@ namespace CommonTestUtils
 {
     public sealed class MockExecutable : IExecutable
     {
-        private readonly ConcurrentDictionary<string, ConcurrentStack<(string output, int? exitCode)>> _outputStackByArguments = new ConcurrentDictionary<string, ConcurrentStack<(string output, int? exitCode)>>();
-        private readonly ConcurrentDictionary<string, int> _commandArgumentsSet = new ConcurrentDictionary<string, int>();
-        private readonly List<MockProcess> _processes = new List<MockProcess>();
+        private readonly ConcurrentDictionary<string, ConcurrentStack<(string output, int? exitCode)>> _outputStackByArguments = new();
+        private readonly ConcurrentDictionary<string, int> _commandArgumentsSet = new();
+        private readonly List<MockProcess> _processes = new();
         private int _nextCommandId;
 
         [MustUseReturnValue]
@@ -32,9 +32,9 @@ namespace CommonTestUtils
             return new DelegateDisposable(
                 () =>
                 {
-                    if (_outputStackByArguments.TryGetValue(arguments, out var s) &&
-                        s.TryPeek(out var r) &&
-                        ReferenceEquals(output, r))
+                    if (_outputStackByArguments.TryGetValue(arguments, out ConcurrentStack<(string output, int? exitCode)> queue) &&
+                        queue.TryPeek(out (string output, int? exitCode) item) &&
+                        output == item.output)
                     {
                         throw new AssertionException($"Staged output should have been consumed.\nArguments: {arguments}\nOutput: {output}");
                     }
@@ -75,14 +75,17 @@ namespace CommonTestUtils
 
         public IProcess Start(ArgumentString arguments, bool createWindow, bool redirectInput, bool redirectOutput, Encoding outputEncoding, bool useShellExecute = false)
         {
-            if (_outputStackByArguments.TryRemove(arguments, out var queue) && queue.TryPop(out var item))
+            System.Diagnostics.Debug.WriteLine($"mock-git {arguments}");
+
+            if (_outputStackByArguments.TryRemove(arguments, out ConcurrentStack<(string output, int? exitCode)> queue) &&
+                queue.TryPop(out (string output, int? exitCode) item))
             {
                 if (queue.Count == 0)
                 {
                     _outputStackByArguments.TryRemove(arguments, out _);
                 }
 
-                var process = new MockProcess(item.output, item.exitCode);
+                MockProcess process = new(item.output, item.exitCode);
 
                 _processes.Add(process);
                 return process;
@@ -90,7 +93,7 @@ namespace CommonTestUtils
 
             if (_commandArgumentsSet.TryRemove(arguments, out _))
             {
-                var process = new MockProcess();
+                MockProcess process = new();
                 _processes.Add(process);
                 return process;
             }
@@ -134,7 +137,7 @@ namespace CommonTestUtils
                 }
                 else
                 {
-                    var cts = new CancellationTokenSource();
+                    CancellationTokenSource cts = new();
                     var ct = cts.Token;
                     cts.Cancel();
                     return Task.FromCanceled<int>(ct);
@@ -159,7 +162,7 @@ namespace CommonTestUtils
 
                 // Only verify if std input is not closed.
                 // ExecutableExtensions.ExecuteAsync will close std input when writeInput action is specified
-                if (StandardInput.BaseStream is not null)
+                if (StandardInput.BaseStream is not null && StandardInput.BaseStream.CanRead)
                 {
                     // no input should have been written (yet)
                     Assert.AreEqual(0, StandardInput.BaseStream.Length);

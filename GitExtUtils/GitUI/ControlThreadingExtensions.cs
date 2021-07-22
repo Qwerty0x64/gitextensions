@@ -14,13 +14,14 @@ namespace GitUI
 
         static ControlThreadingExtensions()
         {
-            using var cts = new CancellationTokenSource();
+            using CancellationTokenSource cts = new();
             cts.Cancel();
             _preCancelledToken = cts.Token;
 
             _controlDisposed = new ConditionalWeakTable<IComponent, StrongBox<CancellationToken>>();
         }
 
+#pragma warning disable VSTHRD004 // Await SwitchToMainThreadAsync
         public static ControlMainThreadAwaitable SwitchToMainThreadAsync(this ToolStripItem control, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -68,6 +69,7 @@ namespace GitUI
             var mainThreadAwaiter = ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(disposedCancellationToken);
             return new ControlMainThreadAwaitable(mainThreadAwaiter, cancellationTokenSource);
         }
+#pragma warning restore VSTHRD004 // Await SwitchToMainThreadAsync
 
         public readonly struct ControlMainThreadAwaitable
         {
@@ -142,7 +144,7 @@ namespace GitUI
                         return new StrongBox<CancellationToken>(_preCancelledToken);
                     }
 
-                    var cts = new CancellationTokenSource();
+                    CancellationTokenSource cts = new();
 
                     // Get a copy of the CancellationToken before the source can be disposed. After the source is cancelled
                     // and disposed, the CancellationToken will continue to behave properly, but

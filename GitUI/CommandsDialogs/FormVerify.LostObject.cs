@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
 using GitCommands;
 using GitExtUtils;
@@ -66,7 +65,7 @@ namespace GitUI.CommandsDialogs
             public DateTime? Date { get; private set; }
 
             /// <summary>
-            /// Tag name (for a tag object)
+            /// Tag name (for a tag object).
             /// </summary>
             public string? TagName { get; set; }
 
@@ -103,7 +102,7 @@ namespace GitUI.CommandsDialogs
                 var rawType = matchedGroups[1].Value;
                 var objectType = GetObjectType(matchedGroups[3]);
                 var objectId = ObjectId.Parse(raw, matchedGroups[4]);
-                var result = new LostObject(objectType, rawType, objectId);
+                LostObject result = new(objectType, rawType, objectId);
 
                 if (objectType == LostObjectType.Commit)
                 {
@@ -113,7 +112,7 @@ namespace GitUI.CommandsDialogs
                     {
                         result.Author = module.ReEncodeStringFromLossless(logPatternMatch.Groups[1].Value);
                         string encodingName = logPatternMatch.Groups[2].Value;
-                        result.Subject = module.ReEncodeCommitMessage(logPatternMatch.Groups[3].Value, encodingName);
+                        result.Subject = module.ReEncodeCommitMessage(logPatternMatch.Groups[3].Value, encodingName) ?? "";
                         result.Date = DateTimeUtils.ParseUnixTime(logPatternMatch.Groups[4].Value);
                         if (logPatternMatch.Groups.Count >= 5)
                         {

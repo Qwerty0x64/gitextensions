@@ -4,7 +4,6 @@ using System.IO;
 using GitCommands;
 using GitCommands.Settings;
 using GitCommands.Utils;
-using GitExtUtils;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
 using Microsoft.Win32;
 
@@ -60,7 +59,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             }
 
             string gitpath = AppSettings.GitCommandValue;
-            if (!Strings.IsNullOrWhiteSpace(possibleNewPath))
+            if (!string.IsNullOrWhiteSpace(possibleNewPath))
             {
                 gitpath = possibleNewPath.Trim();
             }
@@ -178,7 +177,13 @@ namespace GitUI.CommandsDialogs.SettingsDialog
             {
                 try
                 {
-                    string output = new Executable(command).GetOutput();
+                    // Use cached version if possible
+                    if (AppSettings.GitCommand == command && GitVersion.Current?.IsUnknown is false)
+                    {
+                        return true;
+                    }
+
+                    string output = new Executable(command).GetOutput(arguments: "--version");
                     if (!string.IsNullOrEmpty(output))
                     {
                         if (command is not null)
@@ -190,7 +195,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
                 }
                 catch (Exception)
                 {
-                    // Ignore expection, we are trying to find a way to execute git.exe
+                    // Ignore exception, we are trying to find a way to execute git.exe
                 }
 
                 return false;
@@ -237,7 +242,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog
 
         public bool CanFindGitCmd()
         {
-            return !string.IsNullOrEmpty(Module?.GitExecutable.GetOutput(""));
+            return !string.IsNullOrEmpty(Module?.GitExecutable.GetOutput(arguments: "--version"));
         }
     }
 }

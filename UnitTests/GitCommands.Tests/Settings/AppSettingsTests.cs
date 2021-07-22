@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -52,11 +53,14 @@ namespace GitCommandsTests.Settings
                     .GetProperty(nameof(ISetting<string>.Value));
             }
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
+            tempFiles.AddFile(filePath + ".backup", keepFile: false);
 
             File.WriteAllText(filePath, SettingsFileContent);
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            using GitExtSettingsCache cache = GitExtSettingsCache.Create(filePath);
+            RepoDistSettings container = new(null, cache, SettingLevel.Unknown);
             object storedValue = null;
 
             // Act
@@ -84,11 +88,14 @@ namespace GitCommandsTests.Settings
                     .GetProperty(nameof(ISetting<string>.Value));
             }
 
-            var filePath = Path.GetTempFileName();
+            using TempFileCollection tempFiles = new();
+            string filePath = tempFiles.AddExtension(".settings");
+            tempFiles.AddFile(filePath + ".backup", keepFile: false);
 
             File.WriteAllText(filePath, SettingsFileContent);
 
-            var container = new RepoDistSettings(null, GitExtSettingsCache.Create(filePath), SettingLevel.Unknown);
+            using GitExtSettingsCache cache = GitExtSettingsCache.Create(filePath);
+            RepoDistSettings container = new(null, cache, SettingLevel.Unknown);
             object storedValue = null;
 
             // Act
@@ -152,7 +159,7 @@ namespace GitCommandsTests.Settings
                 yield return (properties[nameof(AppSettings.AutoNormaliseBranchName)], true, false, false);
                 yield return (properties[nameof(AppSettings.RememberAmendCommitState)], true, false, false);
                 yield return (properties[nameof(AppSettings.StashKeepIndex)], false, false, false);
-                yield return (properties[nameof(AppSettings.StashConfirmDropShow)], true, false, false);
+                yield return (properties[nameof(AppSettings.DontConfirmStashDrop)], false, false, false);
                 yield return (properties[nameof(AppSettings.ApplyPatchIgnoreWhitespace)], false, false, false);
                 yield return (properties[nameof(AppSettings.ApplyPatchSignOff)], true, false, false);
                 yield return (properties[nameof(AppSettings.UseHistogramDiffAlgorithm)], false, false, false);
@@ -168,7 +175,6 @@ namespace GitCommandsTests.Settings
                 yield return (properties[nameof(AppSettings.ShowConEmuTab)], true, false, true);
                 yield return (properties[nameof(AppSettings.ConEmuStyle)], "<Solarized Light>", true, true);
                 yield return (properties[nameof(AppSettings.ConEmuTerminal)], "bash", true, true);
-                yield return (properties[nameof(AppSettings.ConEmuFontSize)], "12", true, true);
                 yield return (properties[nameof(AppSettings.ShowGpgInformation)], true, false, true);
 
                 yield return (properties[nameof(AppSettings.ShowSplitViewLayout)], true, false, false);

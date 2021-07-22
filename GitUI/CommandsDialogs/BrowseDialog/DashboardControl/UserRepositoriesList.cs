@@ -21,6 +21,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
     public partial class UserRepositoriesList : GitExtensionsControl
     {
         private readonly TranslationString _groupRecentRepositories = new("Recent repositories");
+        private readonly TranslationString _groupActions = new("Actions");
         private readonly TranslationString _deleteCategoryCaption = new(
             "Delete Category");
         private readonly TranslationString _deleteCategoryQuestion = new(
@@ -75,7 +76,9 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
             _lvgRecentRepositories = new ListViewGroup(_groupRecentRepositories.Text, HorizontalAlignment.Left)
             {
-                Name = string.Empty
+                Name = string.Empty,
+                CollapsedState = ListViewGroupCollapsedState.Expanded,
+                TaskLink = _groupActions.Text
             };
 
             _foreColorBrush = new SolidBrush(base.ForeColor);
@@ -85,7 +88,6 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
             listView1.Items.Clear();
             listView1.Groups.Clear();
-            listView1.AllowCollapseGroups = true;
 
             imageList1.Images.Clear();
             imageList1.ImageSize = DpiUtil.Scale(imageList1.ImageSize);
@@ -278,6 +280,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             try
             {
                 listView1.BeginUpdate();
+                listView1.Groups.Clear();
                 listView1.Items.Clear();
                 if (recentRepositories.Count > 0 || favouriteRepositories.Count > 0)
                 {
@@ -292,10 +295,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
                         .Where(c => !string.IsNullOrWhiteSpace(c))
                         .Distinct(GroupHeaderComparer)
                         .OrderBy(c => c)
-                        .Select(c => new ListViewGroup(c, c)))
-                    .AsReadOnlyList();
+                        .Select(c => new ListViewGroup(c, c)
+                        {
+                            CollapsedState = ListViewGroupCollapsedState.Expanded,
+                            TaskLink = _groupActions.Text
+                        }))
+                    .ToArray();
 
-                listView1.SetGroups(groups, GroupHeaderComparer);
+                listView1.Groups.AddRange(groups);
                 BindRepositories(recentRepositories, isFavourite: false);
                 BindRepositories(favouriteRepositories, isFavourite: true);
             }
@@ -343,7 +350,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
         {
             if (keyData == Keys.Enter)
             {
-                // .NET 5.0 introduced collapsible `ListViewGoup`s, which we do not yet have API access to but still get rendered in the UI.
+                // .NET 5.0 introduced collapsible `ListViewGroup`s, which we do not yet have API access to but still get rendered in the UI.
                 // Whenever the list of repos is collapsed but we still have a repo selected (and hidden), if we hit enter, the selected repo will
                 // be opened. This should be a no-op instead, however, since we cannot visually tell what repo is selected. When we upgrade
                 // to .NET 5.0, we can check ListViewGroup.CollapsedState to fix this issue.
@@ -474,7 +481,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
         private bool PromptCategoryName(List<string> categories, string? originalName, [NotNullWhen(returnValue: true)] out string? name)
         {
-            using var dialog = new FormDashboardCategoryTitle(categories, originalName);
+            using FormDashboardCategoryTitle dialog = new(categories, originalName);
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 name = dialog.Category;
@@ -556,12 +563,12 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
                 e.DrawBackground();
             }
 
-            var pointImage = new PointF(e.Bounds.Left + spacing4, e.Bounds.Top + (spacing2 * 4));
+            PointF pointImage = new(e.Bounds.Left + spacing4, e.Bounds.Top + (spacing2 * 4));
 
             // render anchor icon
             if (!string.IsNullOrWhiteSpace((e.Item.Tag as Repository)?.Category))
             {
-                var pointImage1 = new PointF(pointImage.X + imageList1.ImageSize.Width - 12, e.Bounds.Top + spacing2);
+                PointF pointImage1 = new(pointImage.X + imageList1.ImageSize.Width - 12, e.Bounds.Top + spacing2);
                 e.Graphics.DrawImage(Images.Star, pointImage1.X, pointImage1.Y, 16, 16);
             }
 
@@ -569,12 +576,12 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             e.Graphics.DrawImage(imageList1.Images[e.Item.ImageIndex], pointImage);
 
             // render path
-            var textPadding = new PointF(e.Bounds.Left + spacing4, e.Bounds.Top + spacing6);
-            var pointPath = new PointF(textPadding.X + textOffset, textPadding.Y);
+            PointF textPadding = new(e.Bounds.Left + spacing4, e.Bounds.Top + spacing6);
+            PointF pointPath = new(textPadding.X + textOffset, textPadding.Y);
             var pathBounds = DrawText(e.Graphics, e.Item.Text, AppSettings.Font, _foreColorBrush, textWidth, pointPath, spacing4 * 2);
 
             // render branch
-            var pointBranch = new PointF(pointPath.X, pointPath.Y + pathBounds.Height + spacing1);
+            PointF pointBranch = new(pointPath.X, pointPath.Y + pathBounds.Height + spacing1);
             var branchBounds = DrawText(e.Graphics, e.Item.SubItems[1].Text, _secondaryFont, _branchNameColorBrush, textWidth, pointBranch, spacing4 * 2);
 
             // render category
@@ -590,12 +597,24 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             {
                 var textBounds = TextRenderer.MeasureText(text, font);
                 var minWidth = Math.Min(textBounds.Width + spacing, maxTextWidth);
-                var bounds = new RectangleF(location, new SizeF(minWidth, textBounds.Height));
+                RectangleF bounds = new(location, new SizeF(minWidth, textBounds.Height));
                 var text1 = Math.Abs(maxTextWidth - minWidth) < float.Epsilon ? ShortenText(text, font, minWidth) : text;
                 g.DrawString(text1, font, brush, bounds, StringFormat.GenericTypographic);
 
                 return bounds;
             }
+        }
+
+        private void ListView1_GroupTaskLinkClick(object sender, ListViewGroupEventArgs e)
+        {
+            ListViewGroup group = listView1.Groups[e.GroupIndex];
+            bool isRecentRepositoriesGroup = group == _lvgRecentRepositories;
+            tsmiCategoryDelete.Visible = !isRecentRepositoriesGroup;
+            tsmiCategoryRename.Visible = !isRecentRepositoriesGroup;
+            tsmiCategoryClear.Visible = isRecentRepositoriesGroup;
+
+            contextMenuStripCategory.Tag = group;
+            contextMenuStripCategory.Show(listView1, listView1.PointToClient(Cursor.Position));
         }
 
         private void listView1_MouseClick(object sender, MouseEventArgs e)
@@ -614,27 +633,6 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
             }
         }
 
-        private void listView1_GroupMouseUp(object sender, ListViewGroupMouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Right)
-            {
-                var groupHitInfo = listView1.GetGroupHitInfo(e.Location);
-
-                if (groupHitInfo is null)
-                {
-                    return;
-                }
-
-                bool isRecentRepositoriesGroup = groupHitInfo.Group == _lvgRecentRepositories;
-                tsmiCategoryDelete.Visible = !isRecentRepositoriesGroup;
-                tsmiCategoryRename.Visible = !isRecentRepositoriesGroup;
-                tsmiCategoryClear.Visible = isRecentRepositoriesGroup;
-
-                contextMenuStripCategory.Tag = groupHitInfo.Group;
-                contextMenuStripCategory.Show(listView1, e.Location);
-            }
-        }
-
         private void listView1_MouseMove(object sender, MouseEventArgs e)
         {
             HoveredItem = listView1.GetItemAt(e.X, e.Y);
@@ -647,7 +645,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
 
         private void mnuConfigure_Click(object sender, EventArgs e)
         {
-            using var frm = new FormRecentReposSettings();
+            using FormRecentReposSettings frm = new();
             var result = frm.ShowDialog(this);
             if (result == DialogResult.OK)
             {
@@ -684,7 +682,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog.DashboardControl
                 tsmiCategories.DropDownItems.Add(tsmiCategoryNone);
                 tsmiCategories.DropDownItems.AddRange(categories.Select(category =>
                 {
-                    var item = new ToolStripMenuItem(category) { Tag = category };
+                    ToolStripMenuItem item = new(category) { Tag = category };
                     item.Click += tsmiCategory_Click;
                     return item;
                 }).ToArray<ToolStripItem>());

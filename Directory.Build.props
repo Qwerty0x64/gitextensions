@@ -1,18 +1,23 @@
 <Project>
-  <Import Project=".\scripts\sdk\Sdk.props" />
+  <Import Project="scripts\RepoLayout.props" />
+  <Import Project="scripts\Tests.props" />
 
   <PropertyGroup>
     <LangVersion>9</LangVersion>
     <NoWarn>$(NoWarn);1573;1591;1712</NoWarn>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
 
-    <TargetFramework>net461</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <TargetFramework>net5.0-windows</TargetFramework>
     <Prefer32Bit>false</Prefer32Bit>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)GitExtensions.ruleset</CodeAnalysisRuleSet>
 
     <!-- TODO once all project migrated to SDK-style, remove this and move properties to Directory.Build.props -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
 
     <IsPublishable>false</IsPublishable>
   </PropertyGroup>
@@ -27,16 +32,13 @@
   <PropertyGroup Condition="'$(Coverage)' == 'true'">
     <!-- Coverlet assumes PDB files exist on disk https://github.com/tonerdo/coverlet/issues/362 -->
     <DebugType Condition="'$(DebugType)' == 'embedded'">portable</DebugType>
-
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.ComponentModel.Composition" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="netstandard" />
+    <Compile Include="$(RepoRoot)\CommonAssemblyInfo.cs" Link="Properties\CommonAssemblyInfo.cs" />
+  </ItemGroup>
 
+  <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)scripts\stylecop.json">
       <Link>stylecop.json</Link>
     </AdditionalFiles>

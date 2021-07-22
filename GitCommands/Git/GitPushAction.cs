@@ -70,7 +70,7 @@ namespace GitCommands
         /// <summary>Creates the 'push' command string. <example>"push --progress origin master:master"</example></summary>
         public override string ToString()
         {
-            var args = new GitArgumentBuilder("push")
+            GitArgumentBuilder args = new("push")
             {
                 { ReportProgress, "--progress" },
                 Remote.Quote(),
@@ -114,7 +114,7 @@ namespace GitCommands
         /// <summary>Creates the push action command part.</summary>
         public override string ToString()
         {
-            if (Strings.IsNullOrWhiteSpace(_localBranch))
+            if (string.IsNullOrWhiteSpace(_localBranch))
             {
                 return $":{_remoteBranch}";
             }

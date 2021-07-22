@@ -96,7 +96,9 @@ namespace GitUI
                 {
                     try
                     {
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
                         await task.ConfigureAwait(false);
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
                     }
                     catch (OperationCanceledException)
                     {
@@ -115,6 +117,13 @@ namespace GitUI
             await _joinableTaskCollection.JoinTillEmptyAsync(cancellationToken);
         }
 
+        public static void JoinPendingOperations()
+        {
+            // Note that JoinableTaskContext.Factory must be used to bypass the default behavior of JoinableTaskFactory
+            // since the latter adds new tasks to the collection and would therefore never complete.
+            JoinableTaskContext.Factory.Run(_joinableTaskCollection.JoinTillEmptyAsync);
+        }
+
         public static T CompletedResult<T>(this Task<T> task)
         {
             if (!task.IsCompleted)
@@ -122,7 +131,9 @@ namespace GitUI
                 throw new InvalidOperationException();
             }
 
+#pragma warning disable VSTHRD002 // Avoid problematic synchronous waits
             return task.Result;
+#pragma warning restore VSTHRD002 // Avoid problematic synchronous waits
         }
 
         public static T? CompletedOrDefault<T>(this Task<T> task)
@@ -132,7 +143,9 @@ namespace GitUI
                 return default;
             }
 
+#pragma warning disable VSTHRD002 // Avoid problematic synchronous waits
             return task.Result;
+#pragma warning restore VSTHRD002 // Avoid problematic synchronous waits
         }
     }
 }

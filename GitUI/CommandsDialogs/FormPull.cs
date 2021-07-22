@@ -18,7 +18,6 @@ using GitUI.HelperDialogs;
 using GitUI.Properties;
 using GitUI.Script;
 using GitUIPluginInterfaces;
-using Microsoft.WindowsAPICodePack.Dialogs;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
@@ -27,43 +26,43 @@ namespace GitUI.CommandsDialogs
     {
         #region Translation
         private readonly TranslationString _areYouSureYouWantToRebaseMerge =
-            new TranslationString("The current commit is a merge." + Environment.NewLine +
+            new("The current commit is a merge." + Environment.NewLine +
                                   "Are you sure you want to rebase this merge?");
 
         private readonly TranslationString _areYouSureYouWantToRebaseMergeCaption =
-            new TranslationString("Rebase merge commit?");
+            new("Rebase merge commit?");
 
         private readonly TranslationString _allMergeConflictSolvedQuestion =
-            new TranslationString("Are all merge conflicts solved? Do you want to commit?");
+            new("Are all merge conflicts solved? Do you want to commit?");
 
         private readonly TranslationString _allMergeConflictSolvedQuestionCaption =
-            new TranslationString("Conflicts solved");
+            new("Conflicts solved");
 
         private readonly TranslationString _applyStashedItemsAgain =
-            new TranslationString("Apply stashed items to working directory again?");
+            new("Apply stashed items to working directory again?");
 
         private readonly TranslationString _applyStashedItemsAgainCaption =
-            new TranslationString("Auto stash");
+            new("Auto stash");
 
         private readonly TranslationString _fetchAllBranchesCanOnlyWithFetch =
-            new TranslationString("You can only fetch all remote branches (*) without merge or rebase." +
+            new("You can only fetch all remote branches (*) without merge or rebase." +
                                   Environment.NewLine + "If you want to fetch all remote branches, choose fetch." +
                                   Environment.NewLine +
                                   "If you want to fetch and merge a branch, choose a specific branch.");
 
         private readonly TranslationString _selectRemoteRepository =
-            new TranslationString("Please select a remote repository");
+            new("Please select a remote repository");
 
         private readonly TranslationString _selectSourceDirectory =
-            new TranslationString("Please select a source directory");
+            new("Please select a source directory");
 
         private readonly TranslationString _questionInitSubmodules =
-            new TranslationString("The pulled has submodules configured." + Environment.NewLine +
+            new("The pulled has submodules configured." + Environment.NewLine +
                                    "Do you want to initialize the submodules?" + Environment.NewLine +
                                    "This will initialize and update all submodules recursive.");
 
         private readonly TranslationString _questionInitSubmodulesCaption =
-            new TranslationString("Submodules");
+            new("Submodules");
 
         private readonly TranslationString _notOnBranch = new("You cannot \"pull\" when git head detached." +
                                   Environment.NewLine + Environment.NewLine + "Do you want to continue?");
@@ -87,7 +86,7 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _pruneBranchesCaption = new("Pull was rejected");
         private readonly TranslationString _pruneBranchesMainInstruction = new("Remote branch no longer exist");
         private readonly TranslationString _pruneBranchesBranch =
-            new TranslationString("Do you want to delete all stale remote-tracking branches?");
+            new("Do you want to delete all stale remote-tracking branches?");
 
         private readonly TranslationString _pruneFromCaption = new("Prune remote branches from {0}");
 
@@ -213,7 +212,7 @@ namespace GitUI.CommandsDialogs
             _NO_TRANSLATE_Remotes.SelectedIndex = -1;
             _NO_TRANSLATE_Remotes.ResizeDropDownWidth(AppSettings.BranchDropDownMinWidth, AppSettings.BranchDropDownMaxWidth);
 
-            if (Strings.IsNullOrEmpty(selectedRemoteName))
+            if (string.IsNullOrEmpty(selectedRemoteName))
             {
                 selectedRemoteName = Module.GetSetting(string.Format(SettingKeyString.BranchRemote, _branch));
             }
@@ -242,7 +241,7 @@ namespace GitUI.CommandsDialogs
             if (pullAction == AppSettings.PullAction.FetchPruneAll)
             {
                 string messageBoxTitle;
-                if (Strings.IsNullOrEmpty(remote))
+                if (string.IsNullOrEmpty(remote))
                 {
                     messageBoxTitle = string.Format(_pruneFromCaption.Text, AllRemotes);
                 }
@@ -308,7 +307,7 @@ namespace GitUI.CommandsDialogs
                 {
                     if (PullFromUrl.Checked)
                     {
-                        _heads = Module.GetRefs(false, true).ToList();
+                        _heads = Module.GetRefs(RefsFilter.Heads).ToList();
                     }
                     else
                     {
@@ -321,10 +320,9 @@ namespace GitUI.CommandsDialogs
                         // doesn't return heads that are new on the server. This can be updated using
                         // update branch info in the manage remotes dialog.
                         _heads = new List<IGitRef>();
-                        foreach (var head in Module.GetRefs(true, true))
+                        foreach (var head in Module.GetRefs(RefsFilter.Remotes))
                         {
-                            if (!head.IsRemote ||
-                                !head.Name.StartsWith(_NO_TRANSLATE_Remotes.Text, StringComparison.CurrentCultureIgnoreCase))
+                            if (!head.Name.StartsWith(_NO_TRANSLATE_Remotes.Text, StringComparison.CurrentCultureIgnoreCase))
                             {
                                 continue;
                             }
@@ -372,46 +370,33 @@ namespace GitUI.CommandsDialogs
 
             if (!Fetch.Checked && string.IsNullOrWhiteSpace(Branches.Text) && Module.IsDetachedHead())
             {
-                int dialogResult = -1;
-
-                using var dialog = new TaskDialog
+                TaskDialogPage page = new()
                 {
-                    OwnerWindowHandle = owner?.Handle ?? default,
                     Text = _notOnBranch.Text,
-                    InstructionText = TranslatedStrings.ErrorInstructionNotOnBranch,
+                    Heading = TranslatedStrings.ErrorInstructionNotOnBranch,
                     Caption = TranslatedStrings.ErrorCaptionNotOnBranch,
-                    StandardButtons = TaskDialogStandardButtons.Cancel,
-                    Icon = TaskDialogStandardIcon.Error,
-                    Cancelable = true,
+                    Buttons = { TaskDialogButton.Cancel },
+                    Icon = TaskDialogIcon.Error,
+                    AllowCancel = true,
+                    SizeToContent = true
                 };
-                var btnCheckout = new TaskDialogCommandLink("Checkout", null, TranslatedStrings.ButtonCheckoutBranch);
-                btnCheckout.Click += (s, e) =>
-                {
-                    dialogResult = 0;
-                    dialog.Close();
-                };
-                var btnContinue = new TaskDialogCommandLink("Continue", null, TranslatedStrings.ButtonContinue);
-                btnContinue.Click += (s, e) =>
-                {
-                    dialogResult = 1;
-                    dialog.Close();
-                };
-                dialog.Controls.Add(btnCheckout);
-                dialog.Controls.Add(btnContinue);
+                TaskDialogCommandLinkButton btnCheckout = new(TranslatedStrings.ButtonCheckoutBranch);
+                TaskDialogCommandLinkButton btnContinue = new(TranslatedStrings.ButtonContinue);
+                page.Buttons.Add(btnCheckout);
+                page.Buttons.Add(btnContinue);
 
-                dialog.Show();
-
-                switch (dialogResult)
+                TaskDialogButton result = TaskDialog.ShowDialog(owner?.Handle ?? default, page);
+                if (result == TaskDialogButton.Cancel)
                 {
-                    case 0:
-                        if (!UICommands.StartCheckoutBranch(owner))
-                        {
-                            return DialogResult.Cancel;
-                        }
+                    return DialogResult.Cancel;
+                }
 
-                        break;
-                    case -1:
+                if (result == btnCheckout)
+                {
+                    if (!UICommands.StartCheckoutBranch(owner))
+                    {
                         return DialogResult.Cancel;
+                    }
                 }
             }
 
@@ -573,21 +558,22 @@ namespace GitUI.CommandsDialogs
                 bool? messageBoxResult = AppSettings.AutoPopStashAfterPull;
                 if (messageBoxResult is null)
                 {
-                    using var dialog = new TaskDialog
+                    TaskDialogPage page = new()
                     {
-                        OwnerWindowHandle = owner?.Handle ?? IntPtr.Zero,
                         Text = _applyStashedItemsAgain.Text,
                         Caption = _applyStashedItemsAgainCaption.Text,
-                        StandardButtons = TaskDialogStandardButtons.Yes | TaskDialogStandardButtons.No,
-                        Icon = TaskDialogStandardIcon.Information,
-                        FooterCheckBoxText = _dontShowAgain.Text,
-                        FooterIcon = TaskDialogStandardIcon.Information,
-                        StartupLocation = TaskDialogStartupLocation.CenterOwner,
+                        Buttons = { TaskDialogButton.Yes, TaskDialogButton.No },
+                        Icon = TaskDialogIcon.Information,
+                        Verification = new TaskDialogVerificationCheckBox
+                        {
+                            Text = _dontShowAgain.Text
+                        },
+                        SizeToContent = true
                     };
 
-                    messageBoxResult = dialog.Show() == TaskDialogResult.Yes;
+                    messageBoxResult = TaskDialog.ShowDialog(owner?.Handle ?? IntPtr.Zero, page) == TaskDialogButton.Yes;
 
-                    if (dialog.FooterCheckBoxChecked == true)
+                    if (page.Verification.Checked)
                     {
                         AppSettings.AutoPopStashAfterPull = messageBoxResult;
                     }
@@ -701,28 +687,27 @@ namespace GitUI.CommandsDialogs
                 }
 
                 // auto pull only if current branch was rejected
-                var isRefRemoved = new Regex(@"Your configuration specifies to .* the ref '.*'[\r]?\nfrom the remote, but no such ref was fetched.");
+                Regex isRefRemoved = new(@"Your configuration specifies to .* the ref '.*'[\r]?\nfrom the remote, but no such ref was fetched.");
 
                 if (isRefRemoved.IsMatch(form.GetOutputString()))
                 {
-                    using var dialog = new TaskDialog
+                    TaskDialogPage page = new()
                     {
-                        OwnerWindowHandle = form.Handle,
                         Text = _pruneBranchesBranch.Text,
                         Caption = _pruneBranchesCaption.Text,
-                        InstructionText = _pruneBranchesMainInstruction.Text,
-                        StandardButtons = TaskDialogStandardButtons.Yes | TaskDialogStandardButtons.No | TaskDialogStandardButtons.Cancel,
-                        Icon = TaskDialogStandardIcon.Information,
-                        DefaultButton = TaskDialogDefaultButton.No,
-                        StartupLocation = TaskDialogStartupLocation.CenterOwner,
+                        Heading = _pruneBranchesMainInstruction.Text,
+                        Buttons = { TaskDialogButton.Yes, TaskDialogButton.No, TaskDialogButton.Cancel },
+                        Icon = TaskDialogIcon.Information,
+                        DefaultButton = TaskDialogButton.No,
+                        SizeToContent = true
                     };
-                    TaskDialogResult result = dialog.Show();
+                    TaskDialogButton result = TaskDialog.ShowDialog(form.Handle, page);
 
-                    if (result == TaskDialogResult.Yes)
+                    if (result == TaskDialogButton.Yes)
                     {
                         string remote = _NO_TRANSLATE_Remotes.Text;
                         string pruneCmd = "remote prune " + remote;
-                        using var formPrune = new FormRemoteProcess(UICommands, process: null, pruneCmd)
+                        using FormRemoteProcess formPrune = new(UICommands, process: null, pruneCmd)
                         {
                             Remote = remote,
                             Text = string.Format(_pruneFromCaption.Text, remote)
@@ -752,7 +737,7 @@ namespace GitUI.CommandsDialogs
                 return true;
             }
 
-            var currentBranchRemote = new Lazy<string>(() => Module.GetSetting(string.Format(SettingKeyString.BranchRemote, localBranch.Text)));
+            Lazy<string> currentBranchRemote = new(() => Module.GetSetting(string.Format(SettingKeyString.BranchRemote, localBranch.Text)));
 
             if (_branch == localBranch.Text)
             {
@@ -773,41 +758,33 @@ namespace GitUI.CommandsDialogs
             if (string.IsNullOrEmpty(Branches.Text) && !string.IsNullOrEmpty(curLocalBranch)
                 && remote != currentBranchRemote.Value && !Fetch.Checked)
             {
-                int dialogResult = -1;
-
-                using var dialog = new TaskDialog
+                TaskDialogPage page = new()
                 {
-                    OwnerWindowHandle = Handle,
                     Text = string.Format(_noRemoteBranchMainInstruction.Text, remote),
                     Caption = _noRemoteBranchCaption.Text,
-                    InstructionText = _noRemoteBranch.Text,
-                    StandardButtons = TaskDialogStandardButtons.Cancel,
-                    Icon = TaskDialogStandardIcon.Information,
-                    FooterCheckBoxText = _dontShowAgain.Text,
-                    FooterIcon = TaskDialogStandardIcon.Information,
-                    StartupLocation = TaskDialogStartupLocation.CenterOwner,
-                    Cancelable = false
+                    Heading = _noRemoteBranch.Text,
+                    Buttons = { TaskDialogButton.Cancel },
+                    Icon = TaskDialogIcon.Information,
+                    Verification = new TaskDialogVerificationCheckBox
+                    {
+                        Text = _dontShowAgain.Text
+                    },
+                    AllowCancel = false,
+                    SizeToContent = true
                 };
 
-                var btnPullFrom = new TaskDialogCommandLink("PullFrom", null, string.Format(_noRemoteBranchButton.Text, remote + "/" + curLocalBranch));
-                btnPullFrom.Click += (s, e) =>
+                TaskDialogCommandLinkButton btnPullFrom = new(string.Format(_noRemoteBranchButton.Text, remote + "/" + curLocalBranch));
+                page.Buttons.Add(btnPullFrom);
+
+                TaskDialogButton result = TaskDialog.ShowDialog(Handle, page);
+
+                if (result == btnPullFrom)
                 {
-                    dialogResult = 0;
-                    dialog.Close();
-                };
-                dialog.Controls.Add(btnPullFrom);
-
-                dialog.Show();
-
-                switch (dialogResult)
-                {
-                    case 0:
-                        curRemoteBranch = curLocalBranch;
-                        return true;
-
-                    default:
-                        return false;
+                    curRemoteBranch = curLocalBranch;
+                    return true;
                 }
+
+                return false;
             }
 
             if (string.IsNullOrEmpty(Branches.Text) && !string.IsNullOrEmpty(curLocalBranch) && Fetch.Checked)
@@ -820,37 +797,30 @@ namespace GitUI.CommandsDialogs
                     return true;
                 }
 
-                int dialogResult = -1;
-
-                using var dialog = new TaskDialog
+                TaskDialogPage page = new()
                 {
-                    OwnerWindowHandle = Handle,
                     Text = string.Format(_noRemoteBranchForFetchMainInstruction.Text, remote),
                     Caption = _noRemoteBranchCaption.Text,
-                    InstructionText = _noRemoteBranch.Text,
-                    StandardButtons = TaskDialogStandardButtons.Cancel,
-                    Icon = TaskDialogStandardIcon.Information,
-                    StartupLocation = TaskDialogStartupLocation.CenterOwner,
-                    Cancelable = false
+                    Heading = _noRemoteBranch.Text,
+                    Buttons = { TaskDialogButton.Cancel },
+                    Icon = TaskDialogIcon.Information,
+                    AllowCancel = false,
+                    SizeToContent = true
                 };
 
-                var btnPullFrom = new TaskDialogCommandLink("PullFrom", null, string.Format(_noRemoteBranchForFetchButton.Text, remote + "/" + curLocalBranch));
-                btnPullFrom.Click += (s, e) =>
-                {
-                    dialogResult = 0;
-                    dialog.Close();
-                };
-                dialog.Controls.Add(btnPullFrom);
+                TaskDialogCommandLinkButton btnPullFrom = new(string.Format(_noRemoteBranchForFetchButton.Text, remote + "/" + curLocalBranch));
+                page.Buttons.Add(btnPullFrom);
 
-                dialog.Show();
-
-                switch (dialogResult)
+                TaskDialogButton result = TaskDialog.ShowDialog(Handle, page);
+                if (result == TaskDialogButton.Cancel)
                 {
-                    case 0:
-                        curRemoteBranch = curLocalBranch;
-                        return true;
-                    default:
-                        return false;
+                    return false;
+                }
+
+                if (result == btnPullFrom)
+                {
+                    curRemoteBranch = curLocalBranch;
+                    return true;
                 }
             }
 
@@ -885,7 +855,7 @@ namespace GitUI.CommandsDialogs
             string remoteBranchName = Module.GetSetting(string.Format("branch.{0}.merge", _branch));
             if (!string.IsNullOrEmpty(remoteBranchName))
             {
-                var args = new GitArgumentBuilder("name-rev")
+                GitArgumentBuilder args = new("name-rev")
                 {
                     "--name-only",
                     remoteBranchName.QuoteNE()
@@ -905,7 +875,7 @@ namespace GitUI.CommandsDialogs
 
             if (File.Exists(AppSettings.Pageant))
             {
-                var files = new HashSet<string>(new PathEqualityComparer());
+                HashSet<string> files = new(new PathEqualityComparer());
                 foreach (var remote in GetSelectedRemotes())
                 {
                     var sshKeyFile = Module.GetPuttyKeyFileForRemote(remote);
@@ -941,7 +911,7 @@ namespace GitUI.CommandsDialogs
                 {
                     foreach (var remote in (IEnumerable<ConfigFileRemote>)_NO_TRANSLATE_Remotes.DataSource)
                     {
-                        if (!Strings.IsNullOrWhiteSpace(remote.Name) && remote.Name != AllRemotes)
+                        if (!string.IsNullOrWhiteSpace(remote.Name) && remote.Name != AllRemotes)
                         {
                             yield return remote.Name;
                         }
@@ -1166,7 +1136,7 @@ namespace GitUI.CommandsDialogs
             AllTags.Checked = AllTags.Checked || PruneTags.Checked;
         }
 
-        internal TestAccessor GetTestAccessor() => new TestAccessor(this);
+        internal TestAccessor GetTestAccessor() => new(this);
 
         internal readonly struct TestAccessor
         {

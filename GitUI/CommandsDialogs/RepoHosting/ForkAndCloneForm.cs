@@ -8,7 +8,6 @@ using GitCommands;
 using GitCommands.Git;
 using GitCommands.Git.Commands;
 using GitCommands.UserRepositoryHistory;
-using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.HelperDialogs;
 using GitUIPluginInterfaces.RepositoryHosts;
@@ -80,7 +79,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
 
                     await this.SwitchToMainThreadAsync();
                     var lastRepo = repositoryHistory.FirstOrDefault();
-                    if (!Strings.IsNullOrEmpty(lastRepo?.Path))
+                    if (!string.IsNullOrEmpty(lastRepo?.Path))
                     {
                         string p = lastRepo.Path.Trim('/', '\\');
                         destinationTB.Text = Path.GetDirectoryName(p);
@@ -396,7 +395,7 @@ namespace GitUI.CommandsDialogs.RepoHosting
 
             var cmd = GitCommandHelpers.CloneCmd(repoSrc, targetDir, depth: GetDepth());
 
-            var formRemoteProcess = new FormRemoteProcess(new GitUICommands(new GitModule(null)), AppSettings.GitCommand, cmd)
+            FormRemoteProcess formRemoteProcess = new(new GitUICommands(new GitModule(null)), AppSettings.GitCommand, cmd)
             {
                 Remote = repoSrc
             };
@@ -408,9 +407,9 @@ namespace GitUI.CommandsDialogs.RepoHosting
                 return;
             }
 
-            var module = new GitModule(targetDir);
+            GitModule module = new(targetDir);
 
-            if (addUpstreamRemoteAsCB.Text.Trim().Length > 0 && !Strings.IsNullOrEmpty(repo.ParentReadOnlyUrl))
+            if (addUpstreamRemoteAsCB.Text.Trim().Length > 0 && !string.IsNullOrEmpty(repo.ParentReadOnlyUrl))
             {
                 var error = module.AddRemote(addUpstreamRemoteAsCB.Text.Trim(), repo.ParentReadOnlyUrl);
                 if (!string.IsNullOrEmpty(error))

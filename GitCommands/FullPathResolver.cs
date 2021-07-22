@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands
@@ -33,10 +32,6 @@ namespace GitCommands
         /// <summary>
         /// Resolves the provided path (folder or file) against the current working directory.
         /// </summary>
-        /// <remarks>
-        /// Behaves similar to the .NET Core 2.1 version that do not throw on paths with illegal
-        /// Windows characters (that could be OK in Git paths or for cross platform) but returns
-        /// null instead of an possible path.</remarks>
         /// <param name="path">Folder or file path to resolve.</param>
         /// <returns>
         /// <paramref name="path" /> if <paramref name="path" /> is rooted; otherwise resolved path from working directory of the current repository.
@@ -44,23 +39,14 @@ namespace GitCommands
         /// <exception cref="PathTooLongException">The resolved path is too long (greater than 248 characters).</exception>
         public string? Resolve(string? path)
         {
-            if (Strings.IsNullOrWhiteSpace(path))
+            if (string.IsNullOrWhiteSpace(path))
             {
                 return null;
             }
 
-            try
+            if (Path.IsPathRooted(path))
             {
-                if (Path.IsPathRooted(path))
-                {
-                    return path;
-                }
-            }
-            catch (ArgumentException)
-            {
-                // Illegal characters in path.
-                // This is used for Git paths that may not be possible in the host file system
-                return null;
+                return path;
             }
 
             var workingDir = _getWorkingDir();

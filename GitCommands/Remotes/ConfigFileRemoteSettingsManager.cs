@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using GitCommands.Config;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 using Microsoft;
 
@@ -105,7 +103,7 @@ namespace GitCommands.Remotes
         {
             var module = GetModule();
             var localConfig = module.LocalConfigFile;
-            var moduleRefs = module.GetRefs(tags: false, branches: true);
+            var moduleRefs = module.GetRefs(RefsFilter.Heads);
 
             foreach (var remoteHead in moduleRefs)
             {
@@ -145,7 +143,7 @@ namespace GitCommands.Remotes
             var module = GetModule();
             bool IsSettingForBranch(string setting, string branchName)
             {
-                var head = new GitRef(module, null, setting);
+                GitRef head = new(module, null, setting);
                 return head.IsHead && head.Name.Equals(branchName, StringComparison.OrdinalIgnoreCase);
             }
 
@@ -205,8 +203,7 @@ namespace GitCommands.Remotes
         /// </summary>
         public IReadOnlyList<string> GetEnabledRemoteNamesWithoutBranches()
         {
-            HashSet<string> remotesWithBranches = GetModule().GetRefs()
-                .Where(branch => branch.IsRemote && !branch.IsTag)
+            HashSet<string> remotesWithBranches = GetModule().GetRefs(RefsFilter.Remotes)
                 .Select(branch => branch.Name.SubstringUntil('/'))
                 .ToHashSet();
 
@@ -221,7 +218,7 @@ namespace GitCommands.Remotes
         // TODO: candidate for Async implementations
         public IEnumerable<ConfigFileRemote> LoadRemotes(bool loadDisabled)
         {
-            var remotes = new List<ConfigFileRemote>();
+            List<ConfigFileRemote> remotes = new();
             var module = _getModule();
             if (module is null)
             {
@@ -466,7 +463,7 @@ namespace GitCommands.Remotes
             var prefix = remoteDisabled ? DisabledSectionPrefix : string.Empty;
             var fullSettingName = prefix + string.Format(settingName, remoteName);
 
-            if (!Strings.IsNullOrWhiteSpace(value))
+            if (!string.IsNullOrWhiteSpace(value))
             {
                 module.SetSetting(fullSettingName, value);
             }

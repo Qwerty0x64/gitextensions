@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using JetBrains.Annotations;
@@ -173,7 +172,7 @@ namespace GitExtUtils.GitUI
             }
 
             var size = Scale(new Size(image.Width, image.Height));
-            var bitmap = new Bitmap(size.Width, size.Height);
+            Bitmap bitmap = new(size.Width, size.Height);
 
             using var g = Graphics.FromImage(bitmap);
 
@@ -211,7 +210,6 @@ namespace GitExtUtils.GitUI
             {
             }
 
-            [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
             protected override bool ReleaseHandle()
             {
                 ReleaseDC(IntPtr.Zero, handle);

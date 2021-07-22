@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using GitExtUtils;
 using Microsoft.Win32;
 
 namespace GitCommands.Utils
@@ -108,7 +107,7 @@ namespace GitCommands.Utils
 
         public static string? ReplaceLinuxNewLinesDependingOnPlatform(string? s)
         {
-            if (Strings.IsNullOrEmpty(s))
+            if (string.IsNullOrEmpty(s))
             {
                 return s;
             }

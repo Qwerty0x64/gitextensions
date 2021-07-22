@@ -14,7 +14,6 @@ using System.Windows.Forms;
 using BugReporter.Properties;
 using BugReporter.Serialization;
 using GitCommands;
-using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI;
 using Microsoft;
@@ -219,7 +218,7 @@ Send report anyway?");
         #endregion
 
         internal TestAccessor GetTestAccessor()
-            => new TestAccessor(this);
+            => new(this);
 
         internal readonly struct TestAccessor
         {

@@ -33,7 +33,7 @@ namespace GitUI.UserControls.RevisionGrid
         protected override string TranslationCategoryName => "RevisionGrid";
 
         /// <summary>
-        /// ... "Update" because the hotkey settings might change
+        /// ... "Update" because the hotkey settings might change.
         /// </summary>
         public void CreateOrUpdateMenuCommands()
         {
@@ -354,6 +354,13 @@ namespace GitUI.UserControls.RevisionGrid
                     ExecuteAction = () => _revisionGrid.ToggleShowGitNotes(),
                     IsCheckedFunc = () => AppSettings.ShowGitNotes
                 },
+                new MenuCommand
+                {
+                    Name = "showCommitMessageBodyToolStripMenuItem",
+                    Text = "Show commit message body",
+                    ExecuteAction = () => _revisionGrid.ToggleShowCommitBodyInRevisionGrid(),
+                    IsCheckedFunc = () => AppSettings.ShowCommitBodyInRevisionGrid
+                },
 
                 MenuCommand.CreateSeparator(),
 
@@ -410,7 +417,7 @@ namespace GitUI.UserControls.RevisionGrid
 
         public void GotoCommitExecute()
         {
-            using var formGoToCommit = new FormGoToCommit(_revisionGrid.UICommands);
+            using FormGoToCommit formGoToCommit = new(_revisionGrid.UICommands);
             if (formGoToCommit.ShowDialog(_revisionGrid) != DialogResult.OK)
             {
                 return;

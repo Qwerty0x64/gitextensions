@@ -46,8 +46,8 @@ namespace GitUI
         private readonly TranslationString _local = new("Local");
         private readonly TranslationString _tag = new("Tag");
         private readonly TranslationString _remote = new("Remote");
-        private readonly TranslationString _openWithGitExtensions = new("Open with Git Extensions");
-        private readonly TranslationString _openInVisualStudio = new("Open in Visual Studio");
+        private readonly TranslationString _openWithGitExtensions = new("&Open with Git Extensions");
+        private readonly TranslationString _openInVisualStudio = new("Open in &Visual Studio");
         private readonly TranslationString _contScrollToNextFileOnlyWithAlt = new("Enable automatic continuous scroll (without ALT button)");
         private readonly TranslationString _noRevision = new("No revision");
 
@@ -72,7 +72,7 @@ namespace GitUI
         private readonly TranslationString _sortBy = new("&Sort by...");
         private readonly TranslationString _sortOrder = new("&Sort order...");
 
-        private readonly TranslationString _diffSelectedWithRememberedFile = new("Diff with \"{0}\"");
+        private readonly TranslationString _diffSelectedWithRememberedFile = new("&Diff with \"{0}\"");
         private readonly TranslationString _diffWithParent = new("Diff with a/");
         private readonly TranslationString _diffBaseToB = new("Unique diff BASE with b/");
         private readonly TranslationString _diffCommonBase = new("Common diff with BASE a/");
@@ -101,11 +101,14 @@ namespace GitUI
 
         private readonly TranslationString _argumentsText = new("Arguments");
         private readonly TranslationString _commandText = new("Command");
+        private readonly TranslationString _exitCodeText = new("Exit code");
         private readonly TranslationString _workingDirectoryText = new("Working directory");
         private readonly TranslationString _reportBugText = new("If you think this was caused by Git Extensions, you can report a bug for the team to investigate.");
 
         private readonly TranslationString _openInVisualStudioFailureText = new("Could not find this file in any open solution. Ensure you have a project containing this file open before trying again.");
         private readonly TranslationString _openInVisualStudioFailureCaption = new("Unable to open file");
+
+        private readonly TranslationString _remoteInError = new("{0}\n\nRemote: {1}");
 
         // public only because of FormTranslate
         public TranslatedStrings()
@@ -214,11 +217,13 @@ namespace GitUI
 
         public static string Arguments => _instance.Value._argumentsText.Text;
         public static string Command => _instance.Value._commandText.Text;
+        public static string ExitCode => _instance.Value._exitCodeText.Text;
         public static string WorkingDirectory => _instance.Value._workingDirectoryText.Text;
         public static string ReportBug => _instance.Value._reportBugText.Text;
 
         public static string OpenInVisualStudioFailureText => _instance.Value._openInVisualStudioFailureText.Text;
         public static string OpenInVisualStudioFailureCaption => _instance.Value._openInVisualStudioFailureCaption.Text;
+        public static string RemoteInError => _instance.Value._remoteInError.Text;
 
         #region Scripts
 

@@ -9,7 +9,7 @@ namespace GitUI.Hotkey
     public static class KeysExtensions
     {
         /// <summary>
-        /// Strips the modifier from KeyData
+        /// Strips the modifier from KeyData.
         /// </summary>
         public static Keys GetKeyCode(this Keys keyData)
         {
@@ -28,7 +28,7 @@ namespace GitUI.Hotkey
             // Retrieve the modifiers, mask away the rest
             Keys modifier = key & Keys.Modifiers;
 
-            var modifierList = new List<Keys>();
+            List<Keys> modifierList = new();
 
             void AddIfContains(Keys m)
             {

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Utils;
-using GitExtUtils;
 using GitExtUtils.GitUI;
 using GitUI.Avatars;
 using GitUI.Properties;
@@ -28,7 +27,7 @@ namespace GitUI
 
             foreach (var avatarProvider in EnumHelper.GetValues<AvatarProvider>())
             {
-                var item = new ToolStripMenuItem
+                ToolStripMenuItem item = new()
                 {
                     CheckOnClick = true,
                     Tag = avatarProvider,
@@ -47,7 +46,7 @@ namespace GitUI
 
             foreach (var defaultImageType in EnumHelper.GetValues<AvatarFallbackType>())
             {
-                var item = new ToolStripMenuItem
+                ToolStripMenuItem item = new()
                 {
                     CheckOnClick = true,
                     Tag = defaultImageType,
@@ -122,7 +121,7 @@ namespace GitUI
             await this.SwitchToMainThreadAsync();
 
             // resize our control (I'm not using AutoSize for a reason)
-            var size = new Size(AppSettings.AuthorImageSizeInCommitInfo, AppSettings.AuthorImageSizeInCommitInfo);
+            Size size = new(AppSettings.AuthorImageSizeInCommitInfo, AppSettings.AuthorImageSizeInCommitInfo);
 
             DpiUtil.Scale(ref size);
 
@@ -130,7 +129,7 @@ namespace GitUI
 
             var email = Email;
 
-            if (!AppSettings.ShowAuthorAvatarInCommitInfo || Strings.IsNullOrWhiteSpace(email))
+            if (!AppSettings.ShowAuthorAvatarInCommitInfo || string.IsNullOrWhiteSpace(email))
             {
                 RefreshImage(Images.User80);
                 return;

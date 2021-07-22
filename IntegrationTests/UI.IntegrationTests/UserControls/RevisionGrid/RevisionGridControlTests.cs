@@ -92,12 +92,12 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                     Assert.True(revisionGridControl.IsShowFilteredBranchesChecked);
 
                     var ta = revisionGridControl.GetTestAccessor();
-                    ta.RefFilterOptions.Should().Be(RefFilterOptions.None);
+                    ta.RefFilterOptions.Should().Be(RefFilterOptions.Branches);
                 });
         }
 
         [Test]
-        public void View_refect_applied_branch_filter()
+        public void View_reflects_applied_branch_filter()
         {
             AppSettings.BranchFilterEnabled = false;
             AppSettings.ShowCurrentBranchOnly = false;
@@ -121,17 +121,16 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                     revisionGridControl.LatestSelectedRevision.ObjectId.ToString().Should().Be(_headCommit);
 
                     // Refresh the grid, to reflect the filter
-                    revisionGridControl.ForceRefreshRevisions();
-                    DoEvents();
+                    RefreshRevisions(revisionGridControl);
 
                     // Confirm the filter has been applied
-                    revisionGridControl.LatestSelectedRevision.ObjectId.ToString().Should().Be(_branch1Commit);
                     ta.VisibleRevisionCount.Should().Be(2);
+                    ProcessUntil(() => revisionGridControl.LatestSelectedRevision.ObjectId.ToString(), _branch1Commit);
                 });
         }
 
         [Test]
-        public void View_refect_reset_branch_filter()
+        public void View_reflects_reset_branch_filter()
         {
             AppSettings.BranchFilterEnabled = false;
             AppSettings.ShowCurrentBranchOnly = false;
@@ -155,11 +154,9 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                     revisionGridControl.LatestSelectedRevision.ObjectId.ToString().Should().Be(_branch1Commit);
 
                     // Refresh the grid, to reflect the filter
-                    revisionGridControl.ForceRefreshRevisions();
-                    DoEvents();
+                    RefreshRevisions(revisionGridControl);
 
                     // Confirm the filter has been reset, all commits are shown
-                    revisionGridControl.LatestSelectedRevision.ObjectId.ToString().Should().Be(_branch1Commit);
                     ta.VisibleRevisionCount.Should().Be(6);
                 });
         }
@@ -173,10 +170,11 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                 {
                     // If showGitStatusForArtificialCommits is false, we do not update ChangeCount and HasChanges returns false.
                     // Then ToggleBetweenArtificialAndHeadCommits does not check HasChanges and toggles through all three commits.
-                    var hasChangesWorkTree = revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges;
-                    var hasChangesIndex = revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges;
-                    hasChangesWorkTree.Should().Be(showGitStatusForArtificialCommits);
-                    hasChangesIndex.Should().Be(showGitStatusForArtificialCommits);
+                    while (revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges != showGitStatusForArtificialCommits
+                        || revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges != showGitStatusForArtificialCommits)
+                    {
+                        DoEvents();
+                    }
 
                     revisionGridControl.GoToRef(_initialCommit, showNoRevisionMsg: false);
                     revisionGridControl.LatestSelectedRevision.Guid.Should().Be(_initialCommit);
@@ -204,10 +202,11 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                 showGitStatusForArtificialCommits,
                 revisionGridControl =>
                 {
-                    var hasChangesWorkTree = revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges;
-                    var hasChangesIndex = revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges;
-                    hasChangesWorkTree.Should().BeFalse();
-                    hasChangesIndex.Should().Be(showGitStatusForArtificialCommits);
+                    while (revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges != false
+                        || revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges != showGitStatusForArtificialCommits)
+                    {
+                        DoEvents();
+                    }
 
                     revisionGridControl.GoToRef(_initialCommit, showNoRevisionMsg: false);
                     revisionGridControl.LatestSelectedRevision.Guid.Should().Be(_initialCommit);
@@ -240,10 +239,11 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                 showGitStatusForArtificialCommits,
                 revisionGridControl =>
                 {
-                    var hasChangesWorkTree = revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges;
-                    var hasChangesIndex = revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges;
-                    hasChangesWorkTree.Should().Be(showGitStatusForArtificialCommits);
-                    hasChangesIndex.Should().BeFalse();
+                    while (revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges != showGitStatusForArtificialCommits
+                        || revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges != false)
+                    {
+                        DoEvents();
+                    }
 
                     revisionGridControl.GoToRef(_initialCommit, showNoRevisionMsg: false);
                     revisionGridControl.LatestSelectedRevision.Guid.Should().Be(_initialCommit);
@@ -274,10 +274,11 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                 showGitStatusForArtificialCommits,
                 revisionGridControl =>
                 {
-                    var hasChangesWorkTree = revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges;
-                    var hasChangesIndex = revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges;
-                    hasChangesWorkTree.Should().BeFalse();
-                    hasChangesIndex.Should().BeFalse();
+                    while (revisionGridControl.GetChangeCount(ObjectId.WorkTreeId).HasChanges != false
+                        || revisionGridControl.GetChangeCount(ObjectId.IndexId).HasChanges != false)
+                    {
+                        DoEvents();
+                    }
 
                     revisionGridControl.GoToRef(_initialCommit, showNoRevisionMsg: false);
                     revisionGridControl.LatestSelectedRevision.Guid.Should().Be(_initialCommit);
@@ -314,8 +315,7 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                     formBrowse.RevisionGridControl.SetAndApplyBranchFilter(initialFilter);
 
                     // Refresh the grid, to reflect the filter
-                    formBrowse.RevisionGridControl.ForceRefreshRevisions();
-                    DoEvents();
+                    RefreshRevisions(formBrowse.RevisionGridControl);
 
                     try
                     {
@@ -325,6 +325,7 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                     {
                         Console.WriteLine($"{runTest.Method.Name} failed: {ex.Demystify()}");
                         Console.WriteLine(_referenceRepository.Module.GitExecutable.GetOutput("status"));
+                        throw;
                     }
                 });
         }
@@ -358,6 +359,7 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                     {
                         Console.WriteLine($"{runTest.Method.Name} failed: {ex.Demystify()}");
                         Console.WriteLine(_referenceRepository.Module.GitExecutable.GetOutput("status"));
+                        throw;
                     }
 
                     // let the focus events be handled
@@ -374,6 +376,32 @@ namespace GitExtensions.UITests.UserControls.RevisionGrid
                 Thread.Sleep(50);
                 Application.DoEvents();
             }
+        }
+
+        private static void RefreshRevisions(RevisionGridControl revisionGridControl)
+        {
+            revisionGridControl.ForceRefreshRevisions();
+
+            ProcessUntil(() => revisionGridControl.GetTestAccessor().IsRefreshingRevisions.ToString(), false.ToString());
+        }
+
+        private static void ProcessUntil(Func<string> getCurrent, string expected, int maxIterations = 100)
+        {
+            string current = "";
+            for (int iteration = 0; iteration < maxIterations; ++iteration)
+            {
+                current = getCurrent();
+                if (current == expected)
+                {
+                    Debug.WriteLine($"{nameof(ProcessUntil)} '{expected}' in iteration {iteration}");
+                    return;
+                }
+
+                Application.DoEvents();
+                Thread.Sleep(5);
+            }
+
+            Assert.Fail($"{current} != {expected} in {maxIterations} iterations");
         }
     }
 }

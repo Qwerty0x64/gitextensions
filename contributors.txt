@@ -154,4 +154,10 @@ YYYY/MM/DD, github id, Full name, email
 2021/02/10, mabako, Marcus Bauer, mabako(at)gmail.com
 2021/03/11, AntonKedrov, Anton Kedrov, a-k(at)gmx.com
 2021/03/16, JuPrgn, Julien Peyregne, julienprgn(at)gmail.com
+2021/03/20, nyankoframe, Damit Senanayake, damit(at)outlook.com
 2021/03/31, darkcamper, Rubén Ruiz, darkcamper(at)gmail.com
+2021/05/05, mrjithil, Jithil P Ponnan, jithil(at)outlook.com
+2021/05/07, dasiths, Dasith Wijesiriwardena, gitextensions.github(at)dasith.me
+2021/06/18, jwfx, Jörg Winkler, jwfx at bitmx.net
+2021/07/15, davidgiga1993, David Schumann, davidgiga1993(at)gmail.com
+2021/07/20, ransontech, Nicholas Ranson, nickjranson(at)gmail.com

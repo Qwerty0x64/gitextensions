@@ -17,7 +17,6 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml.XPath;
 using GitCommands.Utils;
-using GitExtUtils;
 using GitUI;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
@@ -64,7 +63,7 @@ namespace TeamCityIntegration
 
         private string? _httpClientHostSuffix;
 
-        private readonly List<JoinableTask<IEnumerable<string>>> _getBuildTypesTask = new List<JoinableTask<IEnumerable<string>>>();
+        private readonly List<JoinableTask<IEnumerable<string>>> _getBuildTypesTask = new();
 
         private CookieContainer? _teamCityNtlmAuthCookie;
 
@@ -82,7 +81,7 @@ namespace TeamCityIntegration
             }
 
             string url = serverUrl + "ntlmLogin.html";
-            var cookieContainer = new CookieContainer();
+            CookieContainer cookieContainer = new();
             var request = (HttpWebRequest)WebRequest.Create(url);
             request.CookieContainer = cookieContainer;
 
@@ -128,7 +127,7 @@ namespace TeamCityIntegration
             HostName = config.GetString("BuildServerUrl", null);
             LogAsGuestUrlParameter = config.GetBool("LogAsGuest", false) ? "&guest=1" : string.Empty;
 
-            if (!Strings.IsNullOrEmpty(HostName))
+            if (!string.IsNullOrEmpty(HostName))
             {
                 InitializeHttpClient(HostName);
                 if (ProjectNames.Length > 0)
@@ -251,7 +250,7 @@ namespace TeamCityIntegration
 
         private void NotifyObserverOfBuilds(string[] buildIds, IObserver<BuildInfo> observer, CancellationToken cancellationToken)
         {
-            var tasks = new List<Task>(8);
+            List<Task> tasks = new(8);
             var buildsLeft = buildIds.Length;
 
             foreach (var buildId in buildIds.OrderByDescending(int.Parse))
@@ -285,7 +284,9 @@ namespace TeamCityIntegration
 
                     try
                     {
+#pragma warning disable VSTHRD002
                         Task.WaitAll(batchTasks, cancellationToken);
+#pragma warning restore VSTHRD002
                     }
                     catch (Exception e)
                     {
@@ -337,7 +338,7 @@ namespace TeamCityIntegration
                 statusText = currentStageText;
             }
 
-            var buildInfo = new BuildInfo
+            BuildInfo buildInfo = new()
             {
                 Id = idValue,
                 StartDate = DecodeJsonDateTime(startDateText),
@@ -367,7 +368,9 @@ namespace TeamCityIntegration
 
             return _httpClient.GetAsync(FormatRelativePath(restServicePath), HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                              .ContinueWith(
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
                                  task => GetStreamFromHttpResponseAsync(task, restServicePath, cancellationToken),
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
                                  cancellationToken,
                                  TaskContinuationOptions.AttachedToParent,
                                  TaskScheduler.Current)
@@ -519,7 +522,7 @@ namespace TeamCityIntegration
 
         private Task<XDocument> GetFilteredBuildsXmlResponseAsync(string buildTypeId, CancellationToken cancellationToken, DateTime? sinceDate = null, bool? running = null)
         {
-            var values = new List<string> { "branch:(default:any)" };
+            List<string> values = new() { "branch:(default:any)" };
 
             if (sinceDate.HasValue)
             {

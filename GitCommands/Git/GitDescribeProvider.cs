@@ -1,5 +1,4 @@
 ﻿using System;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands.Git
@@ -29,7 +28,7 @@ namespace GitCommands.Git
         public (string precedingTag, string commitCount) Get(ObjectId revision)
         {
             string? description = GetModule().GetDescribe(revision);
-            if (Strings.IsNullOrEmpty(description))
+            if (string.IsNullOrEmpty(description))
             {
                 return (string.Empty, string.Empty);
             }

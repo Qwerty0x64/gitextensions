@@ -47,7 +47,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
             void LoadBranchesAsync()
             {
                 var selectedBranch = UICommands.GitModule.GetSelectedBranch();
-                ExistingBranches = Module.GetRefs(false);
+                ExistingBranches = Module.GetRefs(RefsFilter.Heads);
                 comboBoxBranches.Text = TranslatedStrings.LoadingData;
                 ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
@@ -105,7 +105,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
         {
             // https://git-scm.com/docs/git-worktree
 
-            var args = new GitArgumentBuilder("worktree")
+            GitArgumentBuilder args = new("worktree")
             {
                 "add",
                 WorktreeDirectory.Quote(),
@@ -150,7 +150,7 @@ namespace GitUI.CommandsDialogs.WorktreeDialog
 
                 try
                 {
-                    var directoryInfo = new DirectoryInfo(newWorktreeDirectory.Text);
+                    DirectoryInfo directoryInfo = new(newWorktreeDirectory.Text);
                     return !directoryInfo.Exists || (!directoryInfo.EnumerateFiles().Any() && !directoryInfo.EnumerateDirectories().Any());
                 }
                 catch

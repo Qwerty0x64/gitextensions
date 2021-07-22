@@ -2,16 +2,12 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <UseWindowsForms>true</UseWindowsForms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Nullable>enable</Nullable>
     <ApplicationIcon>Resources\git-extensions-logo.ico</ApplicationIcon>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-  </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Include="..\CommonAssemblyInfo.cs" Link="Properties\CommonAssemblyInfo.cs" />
-  </ItemGroup>
+    <!-- To be removed when NRT annotations are complete -->
+    <Nullable>annotations</Nullable>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\GitExtUtils\GitExtUtils.csproj" />
@@ -20,7 +16,6 @@
 
   <ItemGroup>
     <PackageReference Include="GitInfo">
-      <Version>2.0.21</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -46,5 +41,4 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-
 </Project>

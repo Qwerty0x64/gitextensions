@@ -22,14 +22,14 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
             LogItems.DisplayMember = nameof(CommandLogEntry.ColumnLine);
 
-            var font = new Font(FontFamily.GenericMonospace, 9);
+            Font font = new(FontFamily.GenericMonospace, 9);
             LogItems.Font = font;
             CommandCacheItems.Font = font;
             LogOutput.Font = font;
             commandCacheOutput.Font = font;
 
-            chkCaptureCallStacks.Checked = CommandLog.CaptureCallStacks;
-            chkCaptureCallStacks.CheckedChanged += delegate { CommandLog.CaptureCallStacks = chkCaptureCallStacks.Checked; };
+            chkCaptureCallStacks.Checked = AppSettings.LogCaptureCallStacks;
+            chkCaptureCallStacks.CheckedChanged += delegate { AppSettings.LogCaptureCallStacks = chkCaptureCallStacks.Checked; };
 
             chkWordWrap.CheckedChanged += delegate
             {
@@ -165,7 +165,7 @@ namespace GitUI.CommandsDialogs.BrowseDialog
 
         private void mnuSaveToFile_Click(object sender, EventArgs e)
         {
-            using var fileDialog = new SaveFileDialog
+            using SaveFileDialog fileDialog = new()
             {
                 Title = Name,
                 DefaultExt = ".txt",

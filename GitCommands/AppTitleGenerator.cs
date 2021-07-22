@@ -1,5 +1,6 @@
+using System;
+using System.ComponentModel.Composition;
 using GitCommands.UserRepositoryHistory;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands
@@ -21,17 +22,18 @@ namespace GitCommands
     /// <summary>
     /// Generates application title.
     /// </summary>
+    [Export(typeof(IAppTitleGenerator))]
     public sealed class AppTitleGenerator : IAppTitleGenerator
     {
+        private readonly IRepositoryDescriptionProvider _descriptionProvider;
 #if DEBUG
         private static string? _extraInfo;
 #endif
 
-        private readonly IRepositoryDescriptionProvider _description;
-
-        public AppTitleGenerator(IRepositoryDescriptionProvider description)
+        [ImportingConstructor]
+        public AppTitleGenerator(IRepositoryDescriptionProvider descriptionProvider)
         {
-            _description = description;
+            _descriptionProvider = descriptionProvider;
         }
 
         /// <summary>
@@ -42,14 +44,14 @@ namespace GitCommands
         /// <param name="branchName">Current branch name.</param>
         public string Generate(string? workingDir = null, bool isValidWorkingDir = false, string? branchName = null)
         {
-            if (Strings.IsNullOrWhiteSpace(workingDir) || !isValidWorkingDir)
+            if (string.IsNullOrWhiteSpace(workingDir) || !isValidWorkingDir)
             {
                 return AppSettings.ApplicationName;
             }
 
             branchName = branchName?.Trim('(', ')') ?? "no branch";
 
-            var description = _description.Get(workingDir);
+            var description = _descriptionProvider.Get(workingDir);
 
 #if DEBUG
             return $"{description} ({branchName}) - {AppSettings.ApplicationName}{_extraInfo}";

@@ -138,6 +138,27 @@ namespace GitUI.CommitInfo
                     .Subscribe(_ => handler(_.EventArgs));
 
             commitInfoHeader.SetContextMenuStrip(commitInfoContextMenuStrip);
+
+            // at this point rtbxCommitMessage.Bounds = {X = 8 Y = 8 Width = 440 Height = 0}
+            // and with Height=0 we won't be receiving any ContentsResizedEvents
+            rtbxCommitMessage.Height = 1;
+        }
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _asyncLoadCancellation.CancelCurrent();
+                ThreadHelper.JoinPendingOperations(); // those run with FileAndForget
+
+                components?.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
 
         private void RefreshSortedTags()
@@ -211,7 +232,7 @@ namespace GitUI.CommitInfo
 
         private IDictionary<string, int> GetSortedTags()
         {
-            var args = new GitArgumentBuilder("for-each-ref")
+            GitArgumentBuilder args = new("for-each-ref")
             {
                 "--sort=-taggerdate",
                 "--format=\"%(refname)\"",
@@ -226,7 +247,7 @@ namespace GitUI.CommitInfo
             }
 
             int i = 0;
-            var dict = new Dictionary<string, int>();
+            Dictionary<string, int> dict = new();
             foreach (var entry in tree.LazySplit('\n'))
             {
                 if (dict.ContainsKey(entry))
@@ -323,7 +344,7 @@ namespace GitUI.CommitInfo
 
                 ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
                 {
-                    var tasks = new List<Task>();
+                    List<Task> tasks = new();
 
                     tasks.Add(LoadLinksForRevisionAsync(initialRevision));
 
@@ -356,8 +377,11 @@ namespace GitUI.CommitInfo
                         tasks.Add(LoadDescribeInfoAsync(initialRevision.ObjectId));
                     }
 
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     await Task.WhenAll(tasks);
 
+                    await this.SwitchToMainThreadAsync(cancellationToken);
                     UpdateRevisionInfo();
                 }).FileAndForget();
 
@@ -411,7 +435,7 @@ namespace GitUI.CommitInfo
                             return null;
                         }
 
-                        var result = new Dictionary<string, string>();
+                        Dictionary<string, string> result = new();
 
                         foreach (var gitRef in refs)
                         {
@@ -497,7 +521,7 @@ namespace GitUI.CommitInfo
                     {
                         var (precedingTag, commitCount) = _gitDescribeProvider.Get(commitId);
 
-                        var gitDescribeInfo = new StringBuilder();
+                        StringBuilder gitDescribeInfo = new();
                         if (!string.IsNullOrEmpty(precedingTag))
                         {
                             string tagString = ShowBranchesAsLinks ? _linkFactory.CreateTagLink(precedingTag) : WebUtility.HtmlEncode(precedingTag);
@@ -564,7 +588,7 @@ namespace GitUI.CommitInfo
                 IEnumerable<string> tagNames,
                 IDictionary<string, string> annotatedTagsMessages)
             {
-                var result = new StringBuilder();
+                StringBuilder result = new();
 
                 foreach (var tag in tagNames)
                 {
@@ -780,7 +804,7 @@ namespace GitUI.CommitInfo
             {
                 int priorityA = GetBranchPriority(a);
                 int priorityB = GetBranchPriority(b);
-                return priorityA == priorityB ? Comparer<string>.Default.Compare(a, b)
+                return priorityA == priorityB ? StringComparer.Ordinal.Compare(a, b)
                     : priorityA - priorityB;
             }
 
@@ -838,7 +862,7 @@ namespace GitUI.CommitInfo
         }
 
         internal TestAccessor GetTestAccessor()
-            => new TestAccessor(this);
+            => new(this);
 
         internal readonly struct TestAccessor
         {

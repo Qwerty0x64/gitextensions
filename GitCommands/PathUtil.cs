@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Text.RegularExpressions;
 using GitCommands.Utils;
-using GitExtUtils;
 
 namespace GitCommands
 {
@@ -56,7 +55,7 @@ namespace GitCommands
         [return: NotNullIfNotNull("dirPath")]
         public static string? EnsureTrailingPathSeparator(this string? dirPath)
         {
-            if (!Strings.IsNullOrEmpty(dirPath) &&
+            if (!string.IsNullOrEmpty(dirPath) &&
                 dirPath[dirPath.Length - 1] != NativeDirectorySeparatorChar &&
                 dirPath[dirPath.Length - 1] != PosixDirectorySeparatorChar)
             {
@@ -71,31 +70,14 @@ namespace GitCommands
             return !Regex.IsMatch(fileName, @"^(\w+):\/\/([\S]+)");
         }
 
-        /// <summary>
-        /// A naive way to check whether the given path is a URL by checking
-        /// whether it starts with either 'http', 'ssh' or 'git'.
-        /// </summary>
-        /// <param name="path">A path to check.</param>
-        /// <returns><see langword="true"/> if the given path starts with 'http', 'ssh' or 'git'; otherwise <see langword="false"/>.</returns>
-        [Pure]
-        public static bool IsUrl(string? path)
-        {
-            return !Strings.IsNullOrEmpty(path)
-                && (path.StartsWith("http:", StringComparison.CurrentCultureIgnoreCase)
-                 || path.StartsWith("https:", StringComparison.CurrentCultureIgnoreCase)
-                 || path.StartsWith("git:", StringComparison.CurrentCultureIgnoreCase)
-                 || path.StartsWith("ssh:", StringComparison.CurrentCultureIgnoreCase)
-                 || path.StartsWith("file:", StringComparison.CurrentCultureIgnoreCase));
-        }
-
         public static bool CanBeGitURL(string? url)
         {
-            if (Strings.IsNullOrWhiteSpace(url))
+            if (string.IsNullOrWhiteSpace(url))
             {
                 return false;
             }
 
-            return IsUrl(url)
+            return Uri.IsWellFormedUriString(url, UriKind.Absolute)
                    || url.EndsWith(".git", StringComparison.CurrentCultureIgnoreCase)
                    || GitModule.IsValidGitWorkingDir(url);
         }
@@ -125,57 +107,6 @@ namespace GitCommands
             }
             catch (UriFormatException)
             {
-                return string.Empty;
-            }
-        }
-
-        /// <summary>
-        /// Wrapper for Path.Combine.
-        /// </summary>
-        /// <remark>
-        /// Similar to the .NET Core 2.1 variant, except that null is returned if Windows
-        /// invalid characters (that may be accepted in Git or other filesystems)
-        /// are in the paths instead of a possible path (the OS or file system will throw
-        /// if the paths are invalid).
-        /// </remark>
-        /// <param name="path1">initial part.</param>
-        /// <param name="path2">second part.</param>
-        /// <returns>path if it can be combined, null otherwise.</returns>
-        public static string? Combine(string path1, string path2)
-        {
-            try
-            {
-                return Path.Combine(path1, path2);
-            }
-            catch (ArgumentException)
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Wrapper for Path.GetExtension.
-        /// </summary>
-        /// <remark>
-        /// <see cref="Combine"/> for motivation.
-        /// </remark>
-        /// <param name="path">path to check.</param>
-        /// <returns>path if it can be combined, empty otherwise.</returns>
-        public static string GetExtension(string? path)
-        {
-            if (path is null)
-            {
-                return string.Empty;
-            }
-
-            try
-            {
-                return Path.GetExtension(path);
-            }
-            catch (ArgumentException)
-            {
-                // This could return part after a '.' using string commands,
-                // but wait for .NET Core with this edge case
                 return string.Empty;
             }
         }
@@ -219,7 +150,8 @@ namespace GitCommands
             Uri tempPath = new(path);
             if (!string.IsNullOrEmpty(relativePath))
             {
-                tempPath = new Uri(tempPath, relativePath);
+                tempPath = new Uri(tempPath, Uri.EscapeUriString(relativePath));
+                return Uri.UnescapeDataString(tempPath.LocalPath);
             }
 
             return tempPath.LocalPath;
@@ -265,13 +197,10 @@ namespace GitCommands
 
                 foreach (var path in EnvironmentPathsProvider.GetEnvironmentValidPaths())
                 {
-                    fullPath = Combine(path, fileName);
+                    fullPath = Path.Combine(path, fileName);
                     if (File.Exists(fullPath))
                     {
-                        // TODO remove suppression when targeting .NET 5
-#pragma warning disable CS8762 // Parameter must have a non-null value when exiting in some condition.
                         return true;
-#pragma warning restore CS8762 // Parameter must have a non-null value when exiting in some condition.
                     }
                 }
             }
@@ -294,13 +223,10 @@ namespace GitCommands
                     return true;
                 }
 
-                shellPath = Combine(AppSettings.GitBinDir, shell);
+                shellPath = Path.Combine(AppSettings.GitBinDir, shell);
                 if (File.Exists(shellPath))
                 {
-                    // TODO remove suppression when targeting .NET 5
-#pragma warning disable CS8762 // Parameter must have a non-null value when exiting in some condition.
                     return true;
-#pragma warning restore CS8762 // Parameter must have a non-null value when exiting in some condition.
                 }
 
                 if (TryFindFullPath(shell, out shellPath))
@@ -342,7 +268,7 @@ namespace GitCommands
         {
             path = path.RemoveTrailingPathSeparator();
 
-            if (Strings.IsNullOrWhiteSpace(path))
+            if (string.IsNullOrWhiteSpace(path))
             {
                 yield break;
             }
@@ -364,7 +290,7 @@ namespace GitCommands
         {
             foreach (string? location in folders)
             {
-                if (Strings.IsNullOrWhiteSpace(location))
+                if (string.IsNullOrWhiteSpace(location))
                 {
                     continue;
                 }
@@ -413,7 +339,7 @@ namespace GitCommands
                     return null;
                 }
 
-                var path = Combine(envVarFolder, location);
+                var path = Path.Combine(envVarFolder, location);
                 if (!Directory.Exists(path))
                 {
                     return null;
@@ -424,7 +350,7 @@ namespace GitCommands
 
             static string? FindFile(string location, string fileName1)
             {
-                string? fullName = Combine(location, fileName1);
+                string fullName = Path.Combine(location, fileName1);
                 if (File.Exists(fullName))
                 {
                     return fullName;

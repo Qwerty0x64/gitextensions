@@ -131,7 +131,7 @@ namespace GitCommands.Logging
         {
             get
             {
-                var s = new StringBuilder();
+                StringBuilder s = new();
 
                 s.Append("File name:   ").AppendLine(FileName);
                 s.Append("Arguments:   ").AppendLine(Arguments);
@@ -152,9 +152,7 @@ namespace GitCommands.Logging
     {
         public static event Action? CommandsChanged;
 
-        private static ConcurrentQueue<CommandLogEntry> _queue = new ConcurrentQueue<CommandLogEntry>();
-
-        public static bool CaptureCallStacks { get; set; }
+        private static ConcurrentQueue<CommandLogEntry> _queue = new();
 
         public static IEnumerable<CommandLogEntry> Commands => _queue;
 
@@ -162,9 +160,9 @@ namespace GitCommands.Logging
         {
             const int MaxEntryCount = 500;
 
-            var entry = new CommandLogEntry(fileName, arguments, workDir, DateTime.Now, ThreadHelper.JoinableTaskContext.IsOnMainThread);
+            CommandLogEntry entry = new(fileName, arguments, workDir, DateTime.Now, ThreadHelper.JoinableTaskContext.IsOnMainThread);
 
-            if (CaptureCallStacks)
+            if (AppSettings.LogCaptureCallStacks)
             {
                 entry.CallStack = new StackTrace();
             }

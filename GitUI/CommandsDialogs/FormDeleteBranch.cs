@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Forms;
 using GitCommands.Git;
 using GitCommands.Git.Commands;
+using GitUIPluginInterfaces;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
@@ -15,12 +16,12 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _deleteBranchQuestion = new(
             "Are you sure you want to delete selected branches?" + Environment.NewLine + "Deleting a branch can cause commits to be deleted too!");
         private readonly TranslationString _deleteUnmergedBranchForcingSuggestion =
-            new TranslationString("You cannot delete unmerged branch until you set “force delete” mode.");
+            new("You cannot delete unmerged branch until you set “force delete” mode.");
         private readonly TranslationString _cannotDeleteCurrentBranchMessage =
-            new TranslationString("Cannot delete the branch “{0}” which you are currently on.");
+            new("Cannot delete the branch “{0}” which you are currently on.");
 
         private readonly IEnumerable<string> _defaultBranches;
-        private readonly HashSet<string> _mergedBranches = new HashSet<string>();
+        private readonly HashSet<string> _mergedBranches = new();
         private string? _currentBranch;
 
         [Obsolete("For VS designer and translation test only. Do not remove.")]
@@ -42,7 +43,7 @@ namespace GitUI.CommandsDialogs
 
         private void FormDeleteBranchLoad(object sender, EventArgs e)
         {
-            Branches.BranchesToSelect = Module.GetRefs(tags: true, branches: true).Where(h => h.IsHead && !h.IsRemote).ToList();
+            Branches.BranchesToSelect = Module.GetRefs(RefsFilter.Heads).ToList();
             foreach (var branch in Module.GetMergedBranches())
             {
                 if (!branch.StartsWith("* "))
@@ -96,7 +97,7 @@ namespace GitUI.CommandsDialogs
                     return;
                 }
 
-                var cmd = new GitDeleteBranchCmd(selectedBranches, ForceDelete.Checked);
+                GitDeleteBranchCmd cmd = new(selectedBranches, ForceDelete.Checked);
                 UICommands.StartCommandLineProcessDialog(this, cmd);
             }
             catch (Exception ex)

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using GitExtUtils;
 using JetBrains.Annotations;
 
 // ReSharper disable once CheckNamespace
@@ -8,41 +7,6 @@ namespace System.Linq
 {
     public static class LinqExtensions
     {
-        [MustUseReturnValue]
-        public static HashSet<T> ToHashSet<T>(this IEnumerable<T> source, IEqualityComparer<T>? comparer = null) => new HashSet<T>(source, comparer ?? EqualityComparer<T>.Default);
-
-        [MustUseReturnValue]
-        public static HashSet<TKey> ToHashSet<TSource, TKey>(
-            this IEnumerable<TSource> source,
-            Func<TSource, TKey> keySelector)
-        {
-            if (keySelector is null)
-            {
-                throw new ArgumentNullException(nameof(keySelector));
-            }
-
-            var result = new HashSet<TKey>();
-
-            foreach (var element in source)
-            {
-                var key = keySelector(element);
-
-                if (key is null)
-                {
-                    throw new ArgumentException(
-                        "Key selector produced a key that is null. See exception data for source.",
-                        nameof(keySelector))
-                    {
-                        Data = { { "source", element } }
-                    };
-                }
-
-                result.Add(key);
-            }
-
-            return result;
-        }
-
         [Pure]
         public static string Join(this IEnumerable<string> source, string separator)
         {
@@ -162,7 +126,7 @@ namespace System.Linq
                 return Array.Empty<T>();
             }
 
-            var list = new List<T>();
+            List<T> list = new();
 
             do
             {
@@ -229,7 +193,7 @@ namespace System.Linq
         {
             foreach (var item in source)
             {
-                if (!Strings.IsNullOrWhiteSpace(item))
+                if (!string.IsNullOrWhiteSpace(item))
                 {
                     yield return item;
                 }

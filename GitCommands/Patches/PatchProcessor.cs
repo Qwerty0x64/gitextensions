@@ -4,7 +4,6 @@ using System.Diagnostics.Contracts;
 using System.Text;
 using System.Text.RegularExpressions;
 using GitCommands.Settings;
-using GitExtUtils;
 
 namespace GitCommands.Patches
 {
@@ -113,7 +112,7 @@ namespace GitCommands.Patches
             string? index = null;
             var changeType = PatchChangeType.ChangeFile;
             var fileType = PatchFileType.Text;
-            var patchText = new StringBuilder();
+            StringBuilder patchText = new();
 
             patchText.Append(header);
             if (lineIndex < lines.Length - 1)
@@ -295,7 +294,7 @@ namespace GitCommands.Patches
         {
             // diff --combined describe.c
             // diff --cc describe.c
-            return !Strings.IsNullOrWhiteSpace(diff) &&
+            return !string.IsNullOrWhiteSpace(diff) &&
                    (diff.StartsWith("diff --cc") || diff.StartsWith("diff --combined"));
         }
 

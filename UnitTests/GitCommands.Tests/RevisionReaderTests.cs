@@ -1,7 +1,15 @@
 ﻿using System;
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
+using ApprovalTests;
+using ApprovalTests.Namers;
+using ApprovalTests.Reporters;
+using ApprovalTests.Reporters.ContinuousIntegration;
 using FluentAssertions;
 using GitCommands;
+using GitUIPluginInterfaces;
+using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace GitCommandsTests
@@ -11,16 +19,39 @@ namespace GitCommandsTests
     {
         private RevisionReader _revisionReader;
 
+        private Func<string?, Encoding?> _getEncodingByGitName;
+        private Encoding _logOutputEncoding = Encoding.UTF8;
+        private long _sixMonths = new DateTimeOffset(new DateTime(2021, 01, 01)).ToUnixTimeSeconds();
+
         [SetUp]
         public void Setup()
         {
             _revisionReader = new RevisionReader();
+
+            // The normal encoding is _logOutputEncoding ("i18n.logoutputencoding") since Git 1.8.4
+            _getEncodingByGitName = (encoding) => _logOutputEncoding;
+        }
+
+        [TestCase(0, false)]
+        [TestCase(1, true)]
+        public void BuildArguments_should_add_maxcount_if_requested(int maxCount, bool expected)
+        {
+            var args = _revisionReader.GetTestAccessor().BuildArgumentsBuildArguments(maxCount, RefFilterOptions.All, "", "", "");
+
+            if (expected)
+            {
+                args.ToString().Should().Contain($" --max-count={maxCount} ");
+            }
+            else
+            {
+                args.ToString().Should().NotContain(" --max-count=");
+            }
         }
 
         [Test]
         public void BuildArguments_should_be_NUL_terminated()
         {
-            var args = _revisionReader.GetTestAccessor().BuildArgumentsBuildArguments(RefFilterOptions.All, "", "", "");
+            var args = _revisionReader.GetTestAccessor().BuildArgumentsBuildArguments(-1, RefFilterOptions.All, "", "", "");
 
             args.ToString().Should().Contain(" log -z ");
         }
@@ -31,7 +62,7 @@ namespace GitCommandsTests
         [TestCase(RefFilterOptions.All | RefFilterOptions.Reflogs, true)]
         public void BuildArguments_should_add_reflog_if_requested(RefFilterOptions refFilterOptions, bool expected)
         {
-            var args = _revisionReader.GetTestAccessor().BuildArgumentsBuildArguments(refFilterOptions, "", "", "");
+            var args = _revisionReader.GetTestAccessor().BuildArgumentsBuildArguments(-1, refFilterOptions, "", "", "");
 
             if (expected)
             {
@@ -65,7 +96,7 @@ namespace GitCommandsTests
         [TestCase(RefFilterOptions.Tags, " --tags ", null)]
         public void BuildArguments_check_parameters(RefFilterOptions refFilterOptions, string expectedToContain, string notExpectedToContain)
         {
-            var args = _revisionReader.GetTestAccessor().BuildArgumentsBuildArguments(refFilterOptions, "my_*", "my_revision", "my_path");
+            var args = _revisionReader.GetTestAccessor().BuildArgumentsBuildArguments(-1, refFilterOptions, "my_*", "my_revision", "my_path");
 
             if (expectedToContain is not null)
             {
@@ -78,70 +109,62 @@ namespace GitCommandsTests
             }
         }
 
-        [TestCase("subject", null, null)]
-        [TestCase("subject", null, "filename")]
-        [TestCase("subject", "line2\nline3", null)]
-        [TestCase("subject", "line2\nline3", "filename")]
-        [TestCase("", "l2", "f")]
-        [TestCase("s", "l2", "f")]
-        [TestCase("s", "l2", "f.ext")]
-        [TestCase("s", "l2\n", "f.ext")]
-        [TestCase("s", "l2\n\nl4", "f.ext")]
-        [TestCase("s", "l2\n\nl4\n", "f.ext")]
-        [TestCase("s", "l2\n\nl4 \n", "f.ext")]
-        [TestCase("s", "l2\n\nl4 \n", "f.ext ")]
-        public void ParseCommitBody_should_work(string subject, string lines, string expectedAdditionalData)
+        [Test]
+        public void TryParseRevisionshould_return_false_if_argument_is_invalid()
         {
-            var encodedBody = new StringBuilder();
-            encodedBody.Append(subject);
-            if (!string.IsNullOrEmpty(lines))
-            {
-                encodedBody.Append('\n').Append(lines);
-            }
+            ArraySegment<byte> chunk = null;
 
-            var expectedBody = encodedBody.ToString().TrimEnd();
-
-            encodedBody.Append(RevisionReader.TestAccessor.EndOfBody);
-            if (!string.IsNullOrEmpty(expectedAdditionalData))
-            {
-                encodedBody.Append(expectedAdditionalData);
-            }
-
-            var reader = RevisionReader.TestAccessor.MakeReader(encodedBody.ToString());
-
-            var (body, additionalData) = RevisionReader.TestAccessor.ParseCommitBody(reader, subject);
-
-            body.Should().Be(expectedBody);
-            additionalData.Should().Be(expectedAdditionalData);
+            bool res = RevisionReader.TestAccessor.TryParseRevision(chunk, _getEncodingByGitName, _logOutputEncoding, _sixMonths, out _);
+            res.Should().BeFalse();
         }
 
-        [TestCase("subject", "subject\n\n1DEA7CC4-FB39-450A-8DDF-762FCEA28B05", "filename")]
-        [TestCase("subject", "SUBJECT\n\n1DEA7CC4-FB39-450A-8DDF-762FCEA28B05", "filename")]
-        [TestCase("subject", "subject\n\n1DEA7CC4-FB39-450A-8DDF-762FCEA28B05")]
-        [TestCase("subject", "subject\0\01DEA7CC4-FB39-450A-8DDF-762FCEA28B05")]
-        [TestCase("subject", "SUBJECT\n\n1DEA7CC4-FB39-450A-8DDF-762FCEA28B05")]
-        [TestCase("subject", "SUBJECT\n\n____________________________________")]
-        [TestCase("subject", "_____________________________________________")]
-        [TestCase("subject", "sub\n1DEA7CC4-FB39-450A-8DDF-762FCEA28B05\nject")]
-        public void ParseCommitBody_should_return_subject_ignoring_contents(string subject, string encodedMessage, string expectedAdditionalData = null)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+
+        // Avoid launching the difftool at differences
+        // APPVEYOR should be detected automatically, this forces the setting (also in local tests)
+        // The popup will hang the tests without failure information
+        [UseReporter(typeof(AppVeyorReporter))]
+        [Test]
+        [TestCase("bad_parentid", false)]
+        [TestCase("bad_parentid_length", false)]
+        [TestCase("bad_sha", false)]
+        [TestCase("empty", false)]
+        [TestCase("illegal_timestamp", true, true)]
+        [TestCase("multi_pathfilter", true)]
+        [TestCase("no_encoding", false)]
+        [TestCase("no_subject", true)]
+        [TestCase("normal", true)]
+        [TestCase("short_sha", false)]
+        [TestCase("simple_pathfilter", true)]
+        [TestCase("subject_no_body", true)]
+        [TestCase("empty_commit", true)]
+        public void TryParseRevision_test(string testName, bool expectedReturn, bool serialThrows = false)
         {
-            var reader = RevisionReader.TestAccessor.MakeReader(encodedMessage + expectedAdditionalData);
-
-            var (body, additionalData) = RevisionReader.TestAccessor.ParseCommitBody(reader, subject);
-
-            body.Should().BeSameAs(subject);
-            additionalData.Should().Be(expectedAdditionalData);
-        }
-
-        [TestCase("subject", "")]
-        [TestCase("subject", "subject")]
-        [TestCase("subject", "subject\nl2")]
-        public void ParseCommitBody_should_return_null_if_no_EndOfBody(string subject, string encodedBody)
-        {
-            using (new NoAssertContext())
+            using (ApprovalResults.ForScenario(testName.Replace(' ', '_')))
             {
-                var reader = RevisionReader.TestAccessor.MakeReader(encodedBody);
-                RevisionReader.TestAccessor.ParseCommitBody(reader, subject).Should().Be((null, null));
+                string path = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestData/RevisionReader", testName + ".bin");
+                ArraySegment<byte> chunk = File.ReadAllBytes(path);
+
+                // Set to a high value so Debug.Assert do not raise exceptions
+                RevisionReader.TestAccessor.NoOfParseError = 100;
+                RevisionReader.TestAccessor.TryParseRevision(chunk, _getEncodingByGitName, _logOutputEncoding, _sixMonths, out GitRevision rev)
+                    .Should().Be(expectedReturn);
+
+                // No LocalTime for the time stamps
+                JsonSerializerSettings timeZoneSettings = new()
+                {
+                    DateTimeZoneHandling = DateTimeZoneHandling.Utc
+                };
+
+                if (serialThrows)
+                {
+                    Action act = () => JsonConvert.SerializeObject(rev);
+                    act.Should().Throw<JsonSerializationException>();
+                }
+                else if (expectedReturn)
+                {
+                    Approvals.VerifyJson(JsonConvert.SerializeObject(rev, timeZoneSettings));
+                }
             }
         }
     }

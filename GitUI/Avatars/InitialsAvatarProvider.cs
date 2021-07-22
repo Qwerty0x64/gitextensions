@@ -45,12 +45,12 @@ namespace GitUI.Avatars
 
         private static (string? name, char[]? separator) NameSelector(string? name, string? email)
         {
-            if (!Strings.IsNullOrWhiteSpace(name))
+            if (!string.IsNullOrWhiteSpace(name))
             {
                 return (name.Trim(), null);
             }
 
-            if (!Strings.IsNullOrWhiteSpace(email))
+            if (!string.IsNullOrWhiteSpace(email))
             {
                 var withoutDomain = email.LazySplit('@').First().TrimStart();
                 return (withoutDomain, _emailInitialSeparator);
@@ -104,7 +104,7 @@ namespace GitUI.Avatars
             lock (_avatarColors)
             {
                 var fontSizeEstimation = size / 4.0f;
-                var font = new Font(AppSettings.CommitFont.FontFamily, fontSizeEstimation);
+                Font font = new(AppSettings.CommitFont.FontFamily, fontSizeEstimation);
 
                 SizeF textSize = _graphics.MeasureString(text, font);
 
@@ -113,7 +113,7 @@ namespace GitUI.Avatars
                 font = new Font(AppSettings.CommitFont.FontFamily, fontSizeEstimation * size / sizeSquare);
                 textSize = _graphics.MeasureString(text, font);
 
-                var img = new Bitmap(size, size);
+                Bitmap img = new(size, size);
 
                 using var drawing = Graphics.FromImage(img);
                 drawing.Clear(backColor);

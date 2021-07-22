@@ -1,4 +1,6 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -12,35 +14,48 @@ using Microsoft.WindowsAPICodePack.Taskbar;
 
 namespace GitUI
 {
+    public interface IWindowsJumpListManager : IDisposable
+    {
+        bool NeedsJumpListCreation { get; }
+
+        void AddToRecent(string workingDir);
+        void CreateJumpList(IntPtr windowHandle, WindowsThumbnailToolbarButtons buttons);
+        void DisableThumbnailToolbar();
+        void UpdateCommitIcon(Image image);
+    }
+
     /// <summary>
     /// Provides access to Windows taskbar jumplists features.
     /// </summary>
     /// <seealso href="https://www.sevenforums.com/news/44368-developing-windows-7-taskbar-thumbnail-toolbars.html" />
     /// <seealso href="https://github.com/jlnewton87/Programming/blob/master/C%23/Windows%20API%20Code%20Pack%201.1/source/WindowsAPICodePack/Shell/Taskbar/JumpList.cs" />
     /// <inheritdoc />
-    public sealed class WindowsJumpListManager : IDisposable
+    [Export(typeof(IWindowsJumpListManager))]
+    public sealed class WindowsJumpListManager : IWindowsJumpListManager
     {
+        private static readonly Dictionary<Image, Icon> _iconByImage = new();
+        private readonly IRepositoryDescriptionProvider _repositoryDescriptionProvider;
         private ThumbnailToolBarButton? _commitButton;
         private ThumbnailToolBarButton? _pushButton;
         private ThumbnailToolBarButton? _pullButton;
         private string? _deferredAddToRecent;
         private bool ToolbarButtonsCreated => _commitButton is not null;
-        private readonly IRepositoryDescriptionProvider _repositoryDescriptionProvider;
 
-        public WindowsJumpListManager(IRepositoryDescriptionProvider repositoryDescriptionProvider)
+        static WindowsJumpListManager()
         {
-            _repositoryDescriptionProvider = repositoryDescriptionProvider;
             if (TaskbarManager.IsPlatformSupported)
             {
                 TaskbarManager.Instance.ApplicationId = AppSettings.ApplicationId;
             }
         }
 
-        ~WindowsJumpListManager()
+        [ImportingConstructor]
+        public WindowsJumpListManager(IRepositoryDescriptionProvider repositoryDescriptionProvider)
         {
-            Dispose(false);
+            _repositoryDescriptionProvider = repositoryDescriptionProvider;
         }
 
+        // MEF will dispose instantiated parts when the container is disposed. There is no need to include a finalizer here.
         public void Dispose()
         {
             Dispose(true);
@@ -96,7 +111,7 @@ namespace GitUI
                 }
 
                 // sanitise
-                var sb = new StringBuilder(repositoryDescription);
+                StringBuilder sb = new(repositoryDescription);
                 foreach (char c in Path.GetInvalidFileNameChars())
                 {
                     sb.Replace(c, '_');
@@ -134,7 +149,7 @@ namespace GitUI
         }
 
         /// <summary>
-        /// Indicates if the JumpList creation is still needed
+        /// Indicates if the JumpList creation is still needed.
         /// </summary>
         public bool NeedsJumpListCreation => IsSupported && !ToolbarButtonsCreated;
 
@@ -182,7 +197,7 @@ namespace GitUI
                 _pullButton = new ThumbnailToolBarButton(MakeIcon(thumbButtons.Pull.Image, 48, true), thumbButtons.Pull.Text);
                 _pullButton.Click += thumbButtons.Pull.Click;
 
-                // Call this method using reflection.  This is a workaround to *not* reference WPF libraries, becuase of how the WindowsAPICodePack was implimented.
+                // Call this method using reflection.  This is a workaround to *not* reference WPF libraries, because of how the WindowsAPICodePack was implemented.
                 TaskbarManager.Instance.ThumbnailToolBars.AddButtons(handle, _commitButton, _pullButton, _pushButton);
             }
         }
@@ -210,18 +225,23 @@ namespace GitUI
 
         /// <summary>
         /// Converts an image into an icon.  This was taken off of the interwebs.
-        /// It's on a billion different sites and forum posts, so I would say its creative commons by now. -tekmaven
+        /// It's on a billion different sites and forum posts, so I would say its creative commons by now. -tekmaven.
         /// </summary>
-        /// <param name="img">The image that shall become an icon</param>
+        /// <param name="img">The image that shall become an icon.</param>
         /// <param name="size">The width and height of the icon. Standard
         /// sizes are 16x16, 32x32, 48x48, 64x64.</param>
         /// <param name="keepAspectRatio">Whether the image should be squashed into a
         /// square or whether whitespace should be put around it.</param>
-        /// <returns>An icon!!</returns>
+        /// <returns>An icon!!.</returns>
         private static Icon MakeIcon(Image img, int size, bool keepAspectRatio)
         {
-            var square = new Bitmap(size, size); // create new bitmap
-            Graphics g = Graphics.FromImage(square); // allow drawing to it
+            if (_iconByImage.TryGetValue(img, out Icon icon))
+            {
+                return icon;
+            }
+
+            using Bitmap square = new(size, size); // create new bitmap
+            using Graphics g = Graphics.FromImage(square); // allow drawing to it
 
             int x, y, w, h; // dimensions for new image
 
@@ -262,7 +282,9 @@ namespace GitUI
 
             // following line would work directly on any image, but then
             // it wouldn't look as nice.
-            return Icon.FromHandle(square.GetHicon());
+            icon = square.ToIcon();
+            _iconByImage.Add(img, icon);
+            return icon;
         }
 
         private static void SafeInvoke(Action action, string callerName)

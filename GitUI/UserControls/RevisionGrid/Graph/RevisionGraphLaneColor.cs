@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 
 namespace GitUI.UserControls.RevisionGrid.Graph
 {
@@ -28,7 +27,7 @@ namespace GitUI.UserControls.RevisionGrid.Graph
 
         internal static Brush NonRelativeBrush { get; }
 
-        internal static readonly List<Brush> PresetGraphBrushes = new List<Brush>();
+        internal static readonly List<Brush> PresetGraphBrushes = new();
 
         static RevisionGraphLaneColor()
         {

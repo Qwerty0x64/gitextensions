@@ -10,7 +10,6 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitCommands.Utils;
-using GitExtUtils;
 using GitUI;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
@@ -56,7 +55,7 @@ namespace AppVeyorIntegration
 
         private HttpClient? _httpClientAppVeyor;
 
-        private List<AppVeyorBuildInfo>? _allBuilds = new List<AppVeyorBuildInfo>();
+        private List<AppVeyorBuildInfo>? _allBuilds = new();
         private HashSet<ObjectId>? _fetchBuilds;
         private Func<ObjectId, bool>? _isCommitInRevisionGrid;
         private bool _shouldLoadTestResults;
@@ -88,7 +87,7 @@ namespace AppVeyorIntegration
             string projectNamesSetting = config.GetString("AppVeyorProjectName", "");
             var projectNames = _buildServerWatcher.ReplaceVariables(projectNamesSetting)
                 .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(p => p.Contains("/") || !Strings.IsNullOrEmpty(accountName))
+                .Where(p => p.Contains("/") || !string.IsNullOrEmpty(accountName))
                 .Select(p => p.Contains("/") ? p : accountName.Combine("/", p)!)
                 .ToList();
 
@@ -106,7 +105,7 @@ namespace AppVeyorIntegration
                     {
                         // v2 tokens requires a separate prefix
                         // (Documentation specifies that this is applicable for all requests, not the case though)
-                        string apiBaseUrl = !Strings.IsNullOrWhiteSpace(accountName) && !Strings.IsNullOrWhiteSpace(accountToken) && accountToken.StartsWith("v2.")
+                        string apiBaseUrl = !string.IsNullOrWhiteSpace(accountName) && !string.IsNullOrWhiteSpace(accountToken) && accountToken.StartsWith("v2.")
                             ? $"{WebSiteUrl}/api/account/{accountName}/projects/"
                             : ApiBaseUrl;
 
@@ -134,13 +133,13 @@ namespace AppVeyorIntegration
 
             static HttpClient GetHttpClient(string baseUrl, string? accountToken)
             {
-                var httpClient = new HttpClient(new HttpClientHandler { UseDefaultCredentials = true })
+                HttpClient httpClient = new(new HttpClientHandler { UseDefaultCredentials = true })
                 {
                     Timeout = TimeSpan.FromMinutes(2),
                     BaseAddress = new Uri(baseUrl, UriKind.Absolute),
                 };
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                if (!Strings.IsNullOrWhiteSpace(accountToken))
+                if (!string.IsNullOrWhiteSpace(accountToken))
                 {
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accountToken);
                 }
@@ -150,7 +149,7 @@ namespace AppVeyorIntegration
 
             List<AppVeyorBuildInfo> FilterBuilds(IEnumerable<AppVeyorBuildInfo> allBuilds)
             {
-                var filteredBuilds = new List<AppVeyorBuildInfo>();
+                List<AppVeyorBuildInfo> filteredBuilds = new();
                 foreach (var build in allBuilds.OrderByDescending(b => b.StartDate))
                 {
                     Validates.NotNull(build.CommitId);
@@ -187,7 +186,7 @@ namespace AppVeyorIntegration
 
         internal IEnumerable<AppVeyorBuildInfo> ExtractBuildInfo(string projectId, string? result)
         {
-            if (Strings.IsNullOrWhiteSpace(result))
+            if (string.IsNullOrWhiteSpace(result))
             {
                 return Enumerable.Empty<AppVeyorBuildInfo>();
             }
@@ -204,7 +203,7 @@ namespace AppVeyorIntegration
             var baseWebUrl = $"{WebSiteUrl}/project/{projectId}/build/";
             var baseApiUrl = $"{ApiBaseUrl}{projectId}/";
 
-            var buildDetails = new List<AppVeyorBuildInfo>();
+            List<AppVeyorBuildInfo> buildDetails = new();
             foreach (var b in builds)
             {
                 try
@@ -450,7 +449,9 @@ namespace AppVeyorIntegration
 
             return httpClient.GetAsync(restServicePath, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                              .ContinueWith(
+#pragma warning disable VSTHRD003 // Avoid awaiting foreign Tasks
                                  task => GetStreamFromHttpResponseAsync(httpClient, task, restServicePath, cancellationToken),
+#pragma warning restore VSTHRD003 // Avoid awaiting foreign Tasks
                                  cancellationToken,
                                  restServicePath.Contains("github") ? TaskContinuationOptions.None : TaskContinuationOptions.AttachedToParent,
                                  TaskScheduler.Current)

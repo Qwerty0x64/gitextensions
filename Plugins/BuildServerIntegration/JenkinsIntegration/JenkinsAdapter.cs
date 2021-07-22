@@ -14,7 +14,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GitCommands.Utils;
-using GitExtUtils;
 using GitUI;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
@@ -59,7 +58,7 @@ namespace JenkinsIntegration
         private HttpClient? _httpClient;
 
         // last known build per project
-        private readonly Dictionary<string, long> _lastProjectBuildTime = new Dictionary<string, long>();
+        private readonly Dictionary<string, long> _lastProjectBuildTime = new();
         private Regex? _ignoreBuilds;
 
         public void Initialize(IBuildServerWatcher buildServerWatcher, ISettingsSource config, Action openSettings, Func<ObjectId, bool>? isCommitInRevisionGrid = null)
@@ -74,7 +73,7 @@ namespace JenkinsIntegration
             var projectName = config.GetString("ProjectName", null);
             var hostName = config.GetString("BuildServerUrl", null);
 
-            if (!Strings.IsNullOrEmpty(hostName) && !Strings.IsNullOrEmpty(projectName))
+            if (!string.IsNullOrEmpty(hostName) && !string.IsNullOrEmpty(projectName))
             {
                 var baseAddress = hostName.Contains("://")
                     ? new Uri(hostName, UriKind.Absolute)
@@ -213,8 +212,8 @@ namespace JenkinsIntegration
         {
             try
             {
-                var allBuildInfos = new List<JoinableTask<ResponseInfo>>();
-                var latestBuildInfos = new List<JoinableTask<ResponseInfo>>();
+                List<JoinableTask<ResponseInfo>> allBuildInfos = new();
+                List<JoinableTask<ResponseInfo>> latestBuildInfos = new();
 
                 foreach (var projectUrl in _lastProjectBuildTime.Keys)
                 {
@@ -253,7 +252,7 @@ namespace JenkinsIntegration
                     return;
                 }
 
-                var builds = new Dictionary<ObjectId, BuildInfo.BuildStatus>();
+                Dictionary<ObjectId, BuildInfo.BuildStatus> builds = new();
                 foreach (var build in allBuildInfos)
                 {
                     if (build.Task.IsFaulted)
@@ -388,7 +387,7 @@ namespace JenkinsIntegration
             var webUrl = buildDescription["url"].ToObject<string>();
 
             var action = buildDescription["actions"];
-            var commitHashList = new List<ObjectId>();
+            List<ObjectId> commitHashList = new();
             string testResults = string.Empty;
             foreach (var element in action)
             {
@@ -443,7 +442,7 @@ namespace JenkinsIntegration
 
             var status = isRunning ? BuildInfo.BuildStatus.InProgress : ParseBuildStatus(statusValue);
             var statusText = status.ToString("G");
-            var buildInfo = new BuildInfo
+            BuildInfo buildInfo = new()
             {
                 Id = idValue,
                 StartDate = TimestampToDateTime(startDateTicks),
@@ -559,7 +558,7 @@ namespace JenkinsIntegration
         private async Task<string> GetResponseAsync(string relativePath, CancellationToken cancellationToken)
         {
             using var responseStream = await GetStreamAsync(relativePath, cancellationToken).ConfigureAwait(false);
-            using var reader = new StreamReader(responseStream);
+            using StreamReader reader = new(responseStream);
             return await reader.ReadToEndAsync();
         }
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -7,13 +7,15 @@ using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using GitUI;
-using Microsoft;
 using Microsoft.VisualStudio.Composition;
 
 namespace GitUIPluginInterfaces
 {
     public static class ManagedExtensibility
     {
+        private static ComposableCatalog? _aggregateCatalog;
+        private static Lazy<ExportProvider>? _exportProvider;
+
         /// <summary>
         /// Gets a root path where user installed plugins are located.
         /// </summary>
@@ -33,15 +35,13 @@ namespace GitUIPluginInterfaces
             UserPluginsPath = userPluginsPath;
         }
 
-        private static Lazy<ExportProvider>? _exportProvider;
-
         private static Lazy<ExportProvider> GetOrCreateLazyExportProvider(string? applicationDataFolder)
         {
-            var lazyExportProvider = Volatile.Read(ref _exportProvider);
+            Lazy<ExportProvider> lazyExportProvider = Volatile.Read(ref _exportProvider);
             if (lazyExportProvider is null)
             {
-                var capturedApplicationDataFolder = applicationDataFolder;
-                var newLazyExportProvider = new Lazy<ExportProvider>(() => CreateExportProvider(capturedApplicationDataFolder), LazyThreadSafetyMode.ExecutionAndPublication);
+                string capturedApplicationDataFolder = applicationDataFolder;
+                Lazy<ExportProvider> newLazyExportProvider = new(() => CreateExportProvider(capturedApplicationDataFolder), LazyThreadSafetyMode.ExecutionAndPublication);
                 lazyExportProvider = Interlocked.CompareExchange(ref _exportProvider, newLazyExportProvider, null) ?? newLazyExportProvider;
             }
 
@@ -50,35 +50,33 @@ namespace GitUIPluginInterfaces
 
         private static ExportProvider CreateExportProvider(string? applicationDataFolder)
         {
-            var stopwatch = Stopwatch.StartNew();
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
             string defaultPluginsPath = Path.Combine(new FileInfo(Application.ExecutablePath).Directory.FullName, "Plugins");
             string? userPluginsPath = UserPluginsPath;
 
-            var pluginFiles = PluginsPathScanner.GetFiles(defaultPluginsPath, userPluginsPath);
-#if !CI_BUILD
-            pluginFiles = pluginFiles.Where(f => f.Name.StartsWith("GitExtensions."));
-#endif
-
-            var cacheFile = Path.Combine(applicationDataFolder ?? "ignored", "Plugins", "composition.cache");
+            IEnumerable<FileInfo> pluginFiles = PluginsPathScanner.GetFiles(defaultPluginsPath, userPluginsPath);
+            string cacheFile = Path.Combine(applicationDataFolder ?? "ignored", "Plugins", "composition.cache");
             IExportProviderFactory exportProviderFactory;
             if (applicationDataFolder is not null && File.Exists(cacheFile))
             {
-                using var cacheStream = File.OpenRead(cacheFile);
+                using FileStream cacheStream = File.OpenRead(cacheFile);
                 exportProviderFactory = ThreadHelper.JoinableTaskFactory.Run(() => new CachedComposition().LoadExportProviderFactoryAsync(cacheStream, Resolver.DefaultInstance));
             }
             else
             {
-                var assemblies = pluginFiles.Select(assemblyFile => TryLoadAssembly(assemblyFile)).WhereNotNull().ToArray();
+                Assembly[] assemblies = pluginFiles.Select(assemblyFile => TryLoadAssembly(assemblyFile)).WhereNotNull().ToArray();
 
-                var discovery = PartDiscovery.Combine(
+                PartDiscovery? discovery = PartDiscovery.Combine(
                     new AttributedPartDiscoveryV1(Resolver.DefaultInstance),
                     new AttributedPartDiscovery(Resolver.DefaultInstance, isNonPublicSupported: true));
-                var parts = ThreadHelper.JoinableTaskFactory.Run(() => discovery.CreatePartsAsync(assemblies));
-                var catalog = ComposableCatalog.Create(Resolver.DefaultInstance).AddParts(parts);
+                DiscoveredParts? parts = ThreadHelper.JoinableTaskFactory.Run(() => discovery.CreatePartsAsync(assemblies));
+                ComposableCatalog catalog = ComposableCatalog.Create(Resolver.DefaultInstance)
+                    .AddCatalog(_aggregateCatalog)
+                    .AddParts(parts);
 
-                var configuration = CompositionConfiguration.Create(catalog.WithCompositionService());
-                var runtimeComposition = RuntimeComposition.CreateRuntimeComposition(configuration);
+                CompositionConfiguration configuration = CompositionConfiguration.Create(catalog.WithCompositionService());
+                RuntimeComposition runtimeComposition = RuntimeComposition.CreateRuntimeComposition(configuration);
                 if (applicationDataFolder is not null)
                 {
 #if false // Composition caching currently disabled
@@ -98,13 +96,7 @@ namespace GitUIPluginInterfaces
         {
             try
             {
-                var assemblyName = AssemblyName.GetAssemblyName(file.FullName);
-                if (assemblyName is null)
-                {
-                    return null;
-                }
-
-                return Assembly.Load(assemblyName);
+                return Assembly.LoadFile(file.FullName);
             }
             catch
             {
@@ -112,9 +104,21 @@ namespace GitUIPluginInterfaces
             }
         }
 
-        public static void SetApplicationDataFolder(string applicationDataFolder)
+        public static void Initialise(IEnumerable<Assembly> assemblies)
         {
-            GetOrCreateLazyExportProvider(applicationDataFolder);
+            PartDiscovery? discovery = PartDiscovery.Combine(
+              new AttributedPartDiscoveryV1(Resolver.DefaultInstance),
+              new AttributedPartDiscovery(Resolver.DefaultInstance, isNonPublicSupported: true));
+            DiscoveredParts? parts = ThreadHelper.JoinableTaskFactory.Run(() => discovery.CreatePartsAsync(assemblies));
+
+            ComposableCatalog? catalog = ComposableCatalog.Create(Resolver.DefaultInstance).AddParts(parts);
+
+            _aggregateCatalog = catalog;
+        }
+
+        public static Lazy<T> GetExport<T>()
+        {
+            return GetOrCreateLazyExportProvider(null).Value.GetExport<T>();
         }
 
         public static IEnumerable<Lazy<T>> GetExports<T>()
@@ -125,6 +129,11 @@ namespace GitUIPluginInterfaces
         public static IEnumerable<Lazy<T, TMetadataView>> GetExports<T, TMetadataView>()
         {
             return GetOrCreateLazyExportProvider(null).Value.GetExports<T, TMetadataView>();
+        }
+
+        public static void SetTestExportProvider(ExportProvider exportProvider)
+        {
+            _exportProvider = new Lazy<ExportProvider>(() => exportProvider);
         }
     }
 }

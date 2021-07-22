@@ -14,6 +14,7 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Config;
 using GitCommands.Remotes;
+using GitCommands.Settings;
 using GitUI.CommandsDialogs.SettingsDialog.Pages;
 using GitUI.HelperDialogs;
 using GitUI.UserControls;
@@ -21,6 +22,7 @@ using GitUI.UserControls.RevisionGrid;
 using GitUI.UserControls.RevisionGrid.Columns;
 using GitUIPluginInterfaces;
 using GitUIPluginInterfaces.BuildServerIntegration;
+using GitUIPluginInterfaces.Settings;
 using Microsoft.VisualStudio.Threading;
 
 namespace GitUI.BuildServerIntegration
@@ -93,7 +95,7 @@ namespace GitUI.BuildServerIntegration
                 buildServerAdapter.GetFinishedBuildsSince(scheduler, nowFrozen)
                             .Finally(() => shouldLookForNewlyFinishedBuilds = false));
 
-            var cancellationToken = new CompositeDisposable
+            CompositeDisposable cancellationToken = new()
                     {
                         fullDayObservable.OnErrorResumeNext(fullObservable)
                                          .OnErrorResumeNext(Observable.Empty<BuildInfo>()
@@ -152,8 +154,8 @@ namespace GitUI.BuildServerIntegration
                         {
                             byte[] unprotectedData = ProtectedData.Unprotect(protectedData, null,
                                 DataProtectionScope.CurrentUser);
-                            using var memoryStream = new MemoryStream(unprotectedData);
-                            var credentialsConfig = new ConfigFile("", false);
+                            using MemoryStream memoryStream = new(unprotectedData);
+                            ConfigFile credentialsConfig = new("", false);
 
                             using (var textReader = new StreamReader(memoryStream, Encoding.UTF8))
                             {
@@ -194,7 +196,7 @@ namespace GitUI.BuildServerIntegration
 
                     if (buildServerCredentials is not null)
                     {
-                        var credentialsConfig = new ConfigFile("", true);
+                        ConfigFile credentialsConfig = new("", true);
 
                         var section = credentialsConfig.FindOrCreateConfigSection(CredentialsConfigName);
 
@@ -203,7 +205,7 @@ namespace GitUI.BuildServerIntegration
                         section.SetValue(PasswordKey, buildServerCredentials.Password);
 
                         using var stream = GetBuildServerOptionsIsolatedStorageStream(buildServerAdapter, FileAccess.Write, FileShare.None);
-                        using var memoryStream = new MemoryStream();
+                        using MemoryStream memoryStream = new();
                         using (var textWriter = new StreamWriter(memoryStream, Encoding.UTF8))
                         {
                             textWriter.Write(credentialsConfig.GetAsString());
@@ -241,7 +243,7 @@ namespace GitUI.BuildServerIntegration
         {
             await _revisionGrid.SwitchToMainThreadAsync();
 
-            using var form = new FormBuildServerCredentials(buildServerUniqueKey);
+            using FormBuildServerCredentials form = new(buildServerUniqueKey);
             form.BuildServerCredentials = buildServerCredentials;
 
             if (form.ShowDialog(_revisionGrid) == DialogResult.OK)
@@ -294,14 +296,15 @@ namespace GitUI.BuildServerIntegration
         {
             await TaskScheduler.Default;
 
-            var buildServerSettings = _module().EffectiveSettings.BuildServer;
+            IBuildServerSettings buildServerSettings = _module().GetEffectiveSettings()
+                .BuildServer();
 
-            if (!buildServerSettings.EnableIntegration.Value)
+            if (!buildServerSettings.EnableIntegration)
             {
                 return null;
             }
 
-            var buildServerType = buildServerSettings.Type.Value;
+            var buildServerType = buildServerSettings.Type;
             if (string.IsNullOrEmpty(buildServerType))
             {
                 return null;
@@ -323,7 +326,7 @@ namespace GitUI.BuildServerIntegration
 
                     var buildServerAdapter = export.Value;
 
-                    buildServerAdapter.Initialize(this, buildServerSettings.TypeSettings,
+                    buildServerAdapter.Initialize(this, _module().GetEffectiveSettings().ByPath(buildServerSettings.Type!),
                         () =>
                         {
                             // To run the `StartSettingsDialog()` in the UI Thread

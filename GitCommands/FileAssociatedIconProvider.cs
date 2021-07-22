@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Drawing;
 using System.IO;
 using System.IO.Abstractions;
-using GitExtUtils;
 
 namespace GitCommands
 {
@@ -24,7 +23,7 @@ namespace GitCommands
     public sealed class FileAssociatedIconProvider : IFileAssociatedIconProvider
     {
         private readonly IFileSystem _fileSystem;
-        private static readonly ConcurrentDictionary<string, Icon?> LoadedFileIcons = new ConcurrentDictionary<string, Icon?>(StringComparer.OrdinalIgnoreCase);
+        private static readonly ConcurrentDictionary<string, Icon?> LoadedFileIcons = new(StringComparer.OrdinalIgnoreCase);
 
         public FileAssociatedIconProvider(IFileSystem fileSystem)
         {
@@ -52,7 +51,7 @@ namespace GitCommands
         /// </remarks>
         public Icon? Get(string workingDirectory, string relativeFilePath)
         {
-            var extension = PathUtil.GetExtension(relativeFilePath);
+            var extension = Path.GetExtension(relativeFilePath);
             if (string.IsNullOrWhiteSpace(extension))
             {
                 return null;
@@ -69,7 +68,7 @@ namespace GitCommands
                     // extensions from the registry and using p/invokes and WinAPI, which have
                     // significantly higher maintenance overhead.
 
-                    var fullPath = PathUtil.Combine(workingDirectory, relativeFilePath);
+                    var fullPath = Path.Combine(workingDirectory, relativeFilePath);
                     if (!_fileSystem.File.Exists(fullPath))
                     {
                         tempFile = CreateTempFile(Path.GetFileName(fullPath));
@@ -84,7 +83,7 @@ namespace GitCommands
                 }
                 finally
                 {
-                    if (!Strings.IsNullOrEmpty(tempFile))
+                    if (!string.IsNullOrEmpty(tempFile))
                     {
                         DeleteFile(tempFile);
                     }

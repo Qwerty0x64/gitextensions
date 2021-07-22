@@ -9,7 +9,6 @@ using System.Windows.Forms;
 using GitCommands;
 using GitCommands.Git;
 using GitCommands.Git.Commands;
-using GitExtUtils;
 using GitUI.CommandsDialogs.BrowseDialog;
 using GitUI.HelperDialogs;
 using GitUI.Hotkey;
@@ -28,14 +27,14 @@ namespace GitUI.CommandsDialogs
         private readonly TranslationString _saveFileFilterAllFiles = new("All files");
         private readonly TranslationString _deleteSelectedFilesCaption = new("Delete");
         private readonly TranslationString _deleteSelectedFiles =
-            new TranslationString("Are you sure you want to delete the selected file(s)?");
+            new("Are you sure you want to delete the selected file(s)?");
         private readonly TranslationString _deleteFailed = new("Delete file failed");
         private readonly TranslationString _multipleDescription = new("<multiple>");
         private readonly TranslationString _selectedRevision = new("Second: b/");
         private readonly TranslationString _firstRevision = new("First: a/");
 
         private readonly TranslationString _resetSelectedChangesText =
-            new TranslationString("Are you sure you want to reset all selected files to {0}?");
+            new("Are you sure you want to reset all selected files to {0}?");
 
         private RevisionGridControl? _revisionGrid;
         private RevisionFileTreeControl? _revisionFileTree;
@@ -44,6 +43,7 @@ namespace GitUI.CommandsDialogs
         private readonly IFullPathResolver _fullPathResolver;
         private readonly IFindFilePredicateProvider _findFilePredicateProvider;
         private readonly IGitRevisionTester _gitRevisionTester;
+        private readonly CancellationTokenSequence _viewChangesSequence = new();
         private readonly RememberFileContextMenuController _rememberFileContextMenuController
             = RememberFileContextMenuController.Default;
         private Action? _refreshGitStatus;
@@ -244,6 +244,21 @@ namespace GitUI.CommandsDialogs
             base.OnRuntimeLoad();
         }
 
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _viewChangesSequence.Dispose();
+                components?.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
         private string DescribeRevision(ObjectId? objectId, int maxLength = 0)
         {
             if (objectId is null)
@@ -265,9 +280,9 @@ namespace GitUI.CommandsDialogs
         }
 
         /// <summary>
-        /// Provide a description for the first selected or parent to the "primary" selected last
+        /// Provide a description for the first selected or parent to the "primary" selected last.
         /// </summary>
-        /// <returns>A description of the selected parent</returns>
+        /// <returns>A description of the selected parent.</returns>
         private string? DescribeRevision(List<GitRevision> parents)
         {
             return parents.Count switch
@@ -336,7 +351,7 @@ namespace GitUI.CommandsDialogs
             bool isAnySubmodule = selectedItems.Any(item => item.Item.IsSubmodule);
             (bool allFilesExist, bool allDirectoriesExist, bool allFilesOrUntrackedDirectoriesExist) = FileOrUntrackedDirExists(selectedItems, _fullPathResolver);
 
-            var selectionInfo = new ContextMenuSelectionInfo(
+            ContextMenuSelectionInfo selectionInfo = new(
                 selectedRevision: selectedRev,
                 isDisplayOnlyDiff: isDisplayOnlyDiff,
                 isStatusOnly: isStatusOnly,
@@ -437,7 +452,8 @@ namespace GitUI.CommandsDialogs
         private async Task ShowSelectedFileDiffAsync()
         {
             await DiffText.ViewChangesAsync(DiffFiles.SelectedItem,
-                openWithDiffTool: () => firstToSelectedToolStripMenuItem.PerformClick());
+                openWithDiffTool: () => firstToSelectedToolStripMenuItem.PerformClick(),
+                cancellationToken: _viewChangesSequence.Next());
         }
 
         private void DiffFiles_SelectedIndexChanged(object sender, EventArgs e)
@@ -531,8 +547,11 @@ namespace GitUI.CommandsDialogs
             openWithDifftoolToolStripMenuItem.Enabled = _revisionDiffController.ShouldShowDifftoolMenus(selectionInfo);
             diffOpenWorkingDirectoryFileWithToolStripMenuItem.Visible = _revisionDiffController.ShouldShowMenuEditWorkingDirectoryFile(selectionInfo);
             diffOpenRevisionFileToolStripMenuItem.Visible = _revisionDiffController.ShouldShowMenuOpenRevision(selectionInfo);
+            diffOpenRevisionFileToolStripMenuItem.Enabled = _revisionDiffController.ShouldShowMenuShowInFileTree(selectionInfo);
             diffOpenRevisionFileWithToolStripMenuItem.Visible = _revisionDiffController.ShouldShowMenuOpenRevision(selectionInfo);
+            diffOpenRevisionFileWithToolStripMenuItem.Enabled = _revisionDiffController.ShouldShowMenuShowInFileTree(selectionInfo);
             saveAsToolStripMenuItem1.Visible = _revisionDiffController.ShouldShowMenuSaveAs(selectionInfo);
+            saveAsToolStripMenuItem1.Enabled = _revisionDiffController.ShouldShowMenuShowInFileTree(selectionInfo);
             openContainingFolderToolStripMenuItem.Visible = _revisionDiffController.ShouldShowMenuShowInFolder(selectionInfo);
             diffEditWorkingDirectoryFileToolStripMenuItem.Visible = _revisionDiffController.ShouldShowMenuEditWorkingDirectoryFile(selectionInfo);
             diffDeleteFileToolStripMenuItem.Text = ResourceManager.TranslatedStrings.GetDeleteFile(selectionInfo.SelectedGitItemCount);
@@ -761,11 +780,11 @@ namespace GitUI.CommandsDialogs
                 return;
             }
 
-            var item = new FileStatusItem(
+            FileStatusItem item = new(
                 firstRev: DiffFiles.SelectedItem.SecondRevision,
                 secondRev: DiffFiles.SelectedItem.FirstRevision,
                 item: DiffFiles.SelectedItem.Item);
-            if (!Strings.IsNullOrWhiteSpace(DiffFiles.SelectedItem.Item.OldName))
+            if (!string.IsNullOrWhiteSpace(DiffFiles.SelectedItem.Item.OldName))
             {
                 var name = DiffFiles.SelectedItem.Item.OldName;
                 DiffFiles.SelectedItem.Item.OldName = DiffFiles.SelectedItem.Item.Name;
@@ -925,10 +944,10 @@ namespace GitUI.CommandsDialogs
 
         /// <summary>
         /// Checks if it is possible to reset to the revision.
-        /// For artificial is Index is possible but not WorkTree or Combined
+        /// For artificial is Index is possible but not WorkTree or Combined.
         /// </summary>
-        /// <param name="guid">The Git objectId</param>
-        /// <returns>If it is possible to reset to the revisions</returns>
+        /// <param name="guid">The Git objectId.</param>
+        /// <returns>If it is possible to reset to the revisions.</returns>
         private bool CanResetToRevision(ObjectId guid)
         {
             return guid != ObjectId.WorkTreeId
@@ -979,8 +998,8 @@ namespace GitUI.CommandsDialogs
             }
 
             var fullName = _fullPathResolver.Resolve(item.Item.Name);
-            using var fileDialog =
-                new SaveFileDialog
+            using SaveFileDialog fileDialog =
+                new()
                 {
                     InitialDirectory = Path.GetDirectoryName(fullName),
                     FileName = Path.GetFileName(fullName),
@@ -1052,7 +1071,7 @@ namespace GitUI.CommandsDialogs
 
             foreach (var name in submodules)
             {
-                var submodulCommands = new GitUICommands(_fullPathResolver.Resolve(name.EnsureTrailingPathSeparator()));
+                GitUICommands submodulCommands = new(_fullPathResolver.Resolve(name.EnsureTrailingPathSeparator()));
                 submodulCommands.StartCommitDialog(this);
             }
 
@@ -1101,7 +1120,7 @@ namespace GitUI.CommandsDialogs
 
             foreach (var name in submodules)
             {
-                var uiCmds = new GitUICommands(Module.GetSubmodule(name));
+                GitUICommands uiCmds = new(Module.GetSubmodule(name));
                 uiCmds.StashSave(this, AppSettings.IncludeUntrackedFilesInManualStash);
             }
 
@@ -1121,9 +1140,9 @@ namespace GitUI.CommandsDialogs
         }
 
         /// <summary>
-        /// Hotkey handler
+        /// Hotkey handler.
         /// </summary>
-        /// <returns>true if hotkey handled</returns>
+        /// <returns>true if hotkey handled.</returns>
         private bool StageSelectedFiles()
         {
             if (!DiffFiles.Focused)
@@ -1142,9 +1161,9 @@ namespace GitUI.CommandsDialogs
         }
 
         /// <summary>
-        /// Hotkey handler
+        /// Hotkey handler.
         /// </summary>
-        /// <returns>true if hotkey handled</returns>
+        /// <returns>true if hotkey handled.</returns>
         private bool UnstageSelectedFiles()
         {
             if (!DiffFiles.Focused)
@@ -1163,9 +1182,9 @@ namespace GitUI.CommandsDialogs
         }
 
         /// <summary>
-        /// Hotkey handler
+        /// Hotkey handler.
         /// </summary>
-        /// <returns>true if hotkey handled</returns>
+        /// <returns>true if hotkey handled.</returns>
         private bool ResetSelectedFilesWithConfirmation()
         {
             if (!DiffFiles.Focused)

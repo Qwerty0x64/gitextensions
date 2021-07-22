@@ -13,7 +13,6 @@ using GitUI.Script;
 using GitUIPluginInterfaces;
 using Microsoft;
 using Microsoft.VisualStudio.Threading;
-using Microsoft.WindowsAPICodePack.Dialogs;
 using ResourceManager;
 
 namespace GitUI.CommandsDialogs
@@ -22,21 +21,21 @@ namespace GitUI.CommandsDialogs
     {
         #region Translation
         private readonly TranslationString _customBranchNameIsEmpty =
-            new TranslationString("Custom branch name is empty.\nEnter valid branch name or select predefined value.");
+            new("Custom branch name is empty.\nEnter valid branch name or select predefined value.");
         private readonly TranslationString _customBranchNameIsNotValid =
-            new TranslationString("“{0}” is not valid branch name.\nEnter valid branch name or select predefined value.");
+            new("“{0}” is not valid branch name.\nEnter valid branch name or select predefined value.");
         private readonly TranslationString _createBranch =
-            new TranslationString("Create local branch with the name:");
+            new("Cr&eate local branch with the name:");
         private readonly TranslationString _applyStashedItemsAgainCaption =
-            new TranslationString("Auto stash");
+            new("Auto stash");
         private readonly TranslationString _applyStashedItemsAgain =
-            new TranslationString("Apply stashed items to working directory again?");
+            new("Apply stashed items to working directory again?");
 
         private readonly TranslationString _dontShowAgain =
-            new TranslationString("Don't show me this message again.");
+            new("Don't show me this message again.");
 
         private readonly TranslationString _resetNonFastForwardBranch =
-            new TranslationString("You are going to reset the “{0}” branch to a new location discarding ALL the commited changes since the {1} revision.\n\nAre you sure?");
+            new("You are going to reset the “{0}” branch to a new location discarding ALL the commited changes since the {1} revision.\n\nAre you sure?");
         private readonly TranslationString _resetCaption = new("Reset branch");
         #endregion
 
@@ -50,7 +49,7 @@ namespace GitUI.CommandsDialogs
         private string _localBranchName = "";
         private readonly IGitBranchNameNormaliser _branchNameNormaliser;
         private readonly GitBranchNameOptions _gitBranchNameOptions = new(AppSettings.AutoNormaliseSymbol);
-        private readonly Dictionary<Control, int> _controls = new Dictionary<Control, int>();
+        private readonly Dictionary<Control, int> _controls = new();
 
         private IReadOnlyList<IGitRef>? _localBranches;
         private IReadOnlyList<IGitRef>? _remoteBranches;
@@ -76,6 +75,7 @@ namespace GitUI.CommandsDialogs
 
             // work-around the designer bug that can't add controls to FlowLayoutPanel
             ControlsPanel.Controls.Add(Ok);
+            AcceptButton = Ok;
 
             ApplyLayout();
             Shown += FormCheckoutBranch_Shown;
@@ -243,7 +243,7 @@ namespace GitUI.CommandsDialogs
 
             IReadOnlyList<string> GetContainsRevisionBranches()
             {
-                var result = new HashSet<string>();
+                HashSet<string> result = new();
                 if (_containRevisions.Count > 0)
                 {
                     var branches = Module.GetAllBranchesWhichContainGivenCommit(_containRevisions[0], LocalBranch.Checked,
@@ -385,21 +385,22 @@ namespace GitUI.CommandsDialogs
                     bool? messageBoxResult = AppSettings.AutoPopStashAfterCheckoutBranch;
                     if (messageBoxResult is null)
                     {
-                        using var dialog = new TaskDialog
+                        TaskDialogPage page = new()
                         {
-                            OwnerWindowHandle = Handle,
                             Text = _applyStashedItemsAgain.Text,
                             Caption = _applyStashedItemsAgainCaption.Text,
-                            Icon = TaskDialogStandardIcon.Information,
-                            StandardButtons = TaskDialogStandardButtons.Yes | TaskDialogStandardButtons.No,
-                            FooterCheckBoxText = _dontShowAgain.Text,
-                            FooterIcon = TaskDialogStandardIcon.Information,
-                            StartupLocation = TaskDialogStartupLocation.CenterOwner
+                            Icon = TaskDialogIcon.Information,
+                            Buttons = { TaskDialogButton.Yes, TaskDialogButton.No },
+                            Verification = new TaskDialogVerificationCheckBox
+                            {
+                                Text = _dontShowAgain.Text
+                            },
+                            SizeToContent = true
                         };
 
-                        messageBoxResult = dialog.Show() == TaskDialogResult.Yes;
+                        messageBoxResult = TaskDialog.ShowDialog(Handle, page) == TaskDialogButton.Yes;
 
-                        if (dialog.FooterCheckBoxChecked == true)
+                        if (page.Verification.Checked)
                         {
                             AppSettings.AutoPopStashAfterCheckoutBranch = messageBoxResult;
                         }
@@ -527,12 +528,12 @@ namespace GitUI.CommandsDialogs
 
         private IEnumerable<IGitRef> GetLocalBranches()
         {
-            return _localBranches ??= Module.GetRefs(tags: false, branches: true);
+            return _localBranches ??= Module.GetRefs(RefsFilter.Heads);
         }
 
         private IEnumerable<IGitRef> GetRemoteBranches()
         {
-            return _remoteBranches ??= Module.GetRefs(tags: true, branches: true).Where(h => h.IsRemote && !h.IsTag).ToList();
+            return _remoteBranches ??= Module.GetRefs(RefsFilter.Remotes);
         }
 
         private void FormCheckoutBranch_Activated(object sender, EventArgs e)

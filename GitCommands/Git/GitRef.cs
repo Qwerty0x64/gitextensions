@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using GitExtUtils;
 using GitUIPluginInterfaces;
 
 namespace GitCommands
@@ -127,7 +126,7 @@ namespace GitCommands
 
         public bool IsOther => !IsHead && !IsRemote && !IsTag;
 
-        public string LocalName => IsRemote ? Name.Substring(Remote.Length + 1) : Name;
+        public string LocalName => IsRemote && Name.StartsWith($"{Remote}/") ? Name.Substring(Remote.Length + 1) : Name;
 
         public string Remote { get; }
 
@@ -137,7 +136,7 @@ namespace GitCommands
             get => GetTrackingRemote(Module.LocalConfigFile);
             set
             {
-                if (Strings.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     Module.UnsetSetting(_remoteSettingName);
                 }
@@ -166,7 +165,7 @@ namespace GitCommands
             get => GetMergeWith(Module.LocalConfigFile);
             set
             {
-                if (Strings.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     Module.UnsetSetting(_mergeSettingName);
                 }
@@ -203,7 +202,8 @@ namespace GitCommands
             return refs
                 .GroupBy(r => r.Name)
                 .Where(group => group.Count() > 1)
-                .ToHashSet(e => e.Key);
+                .Select(e => e.Key)
+                .ToHashSet();
         }
 
         public bool IsTrackingRemote(IGitRef? remote)

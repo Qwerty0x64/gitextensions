@@ -24,11 +24,11 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
         {
             base.OnLoad(e);
 
-            var translations = new List<string>(Translator.GetAllTranslations());
+            List<string> translations = new(Translator.GetAllTranslations());
             translations.Sort();
             translations.Insert(0, "English");
 
-            var imageList = new ImageList
+            ImageList imageList = new()
             {
                 ColorDepth = ColorDepth.Depth32Bit,
                 ImageSize = DpiUtil.Scale(new Size(150, 75)),
@@ -36,7 +36,7 @@ namespace GitUI.CommandsDialogs.SettingsDialog.Pages
 
             foreach (string translation in translations)
             {
-                var imagePath = PathUtil.Combine(Translator.GetTranslationDir(), translation + ".gif");
+                var imagePath = Path.Combine(Translator.GetTranslationDir(), translation + ".gif");
                 if (File.Exists(imagePath))
                 {
                     var image = Image.FromFile(imagePath);

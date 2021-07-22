@@ -1,11 +1,14 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
+using System.Security;
 using System.Text;
 using System.Windows.Forms;
 using BugReporter;
 using BugReporter.Serialization;
+using GitCommands;
 using GitExtUtils;
-using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace GitUI.NBugReports
 {
@@ -42,6 +45,9 @@ namespace GitUI.NBugReports
 
             if (exception is ExternalOperationException externalOperationException)
             {
+                // Exit code: <n>
+                AppendIfNotEmpty($"{externalOperationException.ExitCode}{Environment.NewLine}", TranslatedStrings.ExitCode);
+
                 // Command: <command>
                 AppendIfNotEmpty(externalOperationException.Command, TranslatedStrings.Command);
 
@@ -63,8 +69,30 @@ namespace GitUI.NBugReports
             }
         }
 
+        public static void LogError(Exception exception, bool isTerminating = false)
+        {
+            string tempFolder = Path.GetTempPath();
+            string tempFileName = $"{AppSettings.ApplicationId}.{AppSettings.AppVersion}.{DateTime.Now.ToString("yyyyMMdd.HHmmssfff")}.log";
+            string tempFile = Path.Combine(tempFolder, tempFileName);
+
+            try
+            {
+                string content = $"Is fatal: {isTerminating}\r\n{exception}";
+                File.WriteAllText(tempFile, content);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to log error to {tempFile}\r\n{ex.Message}", "Error writing log", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         public static void Report(Exception exception, bool isTerminating)
         {
+            if (AppSettings.WriteErrorLog)
+            {
+                LogError(exception, isTerminating);
+            }
+
             if (isTerminating)
             {
                 // TODO: this is not very efficient
@@ -77,18 +105,24 @@ namespace GitUI.NBugReports
             }
 
             bool isUserExternalOperation = exception is UserExternalOperationException;
-            bool isExternalOperation = exception is ExternalOperationException;
+            bool isExternalOperation = exception is ExternalOperationException
+                                                 or IOException
+                                                 or SecurityException
+                                                 or FileNotFoundException
+                                                 or DirectoryNotFoundException
+                                                 or PathTooLongException
+                                                 or Win32Exception;
 
             StringBuilder text = new();
             string rootError = Append(text, exception);
 
-            using var taskDialog = new TaskDialog
+            TaskDialogPage page = new()
             {
-                OwnerWindowHandle = OwnerFormHandle,
-                Icon = TaskDialogStandardIcon.Error,
+                Icon = TaskDialogIcon.Error,
                 Caption = TranslatedStrings.Error,
-                InstructionText = rootError,
-                Cancelable = true,
+                Heading = rootError,
+                AllowCancel = true,
+                SizeToContent = true
             };
 
             // prefer to ignore failed external operations
@@ -105,13 +139,12 @@ namespace GitUI.NBugReports
             }
 
             string buttonText = isUserExternalOperation ? TranslatedStrings.ButtonViewDetails : TranslatedStrings.ButtonReportBug;
-            TaskDialogCommandLink taskDialogCommandLink = new(buttonText, buttonText);
+            TaskDialogCommandLinkButton taskDialogCommandLink = new(buttonText);
             taskDialogCommandLink.Click += (s, e) =>
             {
-                taskDialog.Close();
-                ShowNBug(OwnerForm, exception, isTerminating);
+                ShowNBug(OwnerForm, exception, isExternalOperation, isTerminating);
             };
-            taskDialog.Controls.Add(taskDialogCommandLink);
+            page.Buttons.Add(taskDialogCommandLink);
 
             // let the user decide whether to report the bug
             if (!isExternalOperation)
@@ -119,26 +152,25 @@ namespace GitUI.NBugReports
                 AddIgnoreOrCloseButton();
             }
 
-            taskDialog.Text = text.ToString().Trim();
-            taskDialog.Show();
+            page.Text = text.ToString().Trim();
+            TaskDialog.ShowDialog(OwnerFormHandle, page);
             return;
 
             void AddIgnoreOrCloseButton()
             {
                 string buttonText = isTerminating ? TranslatedStrings.ButtonCloseApp : TranslatedStrings.ButtonIgnore;
-                TaskDialogCommandLink taskDialogCommandLink = new(buttonText, buttonText);
-                taskDialogCommandLink.Click += (s, e) => taskDialog.Close();
-                taskDialog.Controls.Add(taskDialogCommandLink);
+                TaskDialogCommandLinkButton taskDialogCommandLink = new(buttonText);
+                page.Buttons.Add(taskDialogCommandLink);
             }
         }
 
-        private static void ShowNBug(IWin32Window? owner, Exception exception, bool isTerminating)
+        private static void ShowNBug(IWin32Window? owner, Exception exception, bool isExternalOperation, bool isTerminating)
         {
             using BugReportForm form = new();
             DialogResult result = form.ShowDialog(owner, new SerializableException(exception),
                 UserEnvironmentInformation.GetInformation(),
                 canIgnore: !isTerminating,
-                showIgnore: exception is ExternalOperationException,
+                showIgnore: isExternalOperation,
                 focusDetails: exception is UserExternalOperationException);
             if (isTerminating || result == DialogResult.Abort)
             {
@@ -148,7 +180,7 @@ namespace GitUI.NBugReports
 
         private static string Base64Encode(string plainText)
         {
-            var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+            byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
             return Convert.ToBase64String(plainTextBytes);
         }
     }

@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using GitCommands.Settings;
 using GitUI.UserControls;
 using GitUIPluginInterfaces;
+using GitUIPluginInterfaces.Settings;
 using Microsoft;
 
 namespace GitUI.CommandsDialogs
@@ -23,7 +24,7 @@ namespace GitUI.CommandsDialogs
         private WebBrowserControl? _buildReportWebBrowser;
         private GitRevision? _selectedGitRevision;
         private string? _url;
-        private readonly LinkLabel _openReportLink = new LinkLabel { AutoSize = false, Text = TranslatedStrings.OpenReport, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Fill };
+        private readonly LinkLabel _openReportLink = new() { AutoSize = false, Text = TranslatedStrings.OpenReport, TextAlign = ContentAlignment.MiddleCenter, Dock = DockStyle.Fill };
 
         public Control? Control { get; private set; } // for focusing
 
@@ -220,8 +221,11 @@ namespace GitUI.CommandsDialogs
 
         private bool IsBuildResultPageEnabled()
         {
-            var settings = GetModule().GetEffectiveSettings() as RepoDistSettings;
-            return settings?.BuildServer.ShowBuildResultPage.Value ?? false;
+            IBuildServerSettings buildServerSettings = GetModule()
+                .GetEffectiveSettings()
+                .BuildServer();
+
+            return buildServerSettings.ShowBuildResultPage;
         }
 
         private IGitModule GetModule()

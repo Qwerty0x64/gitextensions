@@ -303,7 +303,7 @@ namespace GitUI.Script
                 backgroundBounds.Inflate(-1, -1);
                 ButtonRenderer.DrawButton(g, backgroundBounds, State);
 
-                // button renderer doesnt draw the black frame when themes are off
+                // button renderer doesn't draw the black frame when themes are off
                 g.DrawRectangle(SystemPens.WindowFrame, 0, 0, bounds.Width - 1, bounds.Height - 1);
             }
             else
@@ -316,7 +316,7 @@ namespace GitUI.Script
 
             int internalBorder = BorderSize;
             Rectangle focusRect =
-                new Rectangle(internalBorder - 1,
+                new(internalBorder - 1,
                               internalBorder - 1,
                               bounds.Width - _dropDownRectangle.Width - internalBorder,
                               bounds.Height - (internalBorder * 2) + 2);
@@ -377,7 +377,7 @@ namespace GitUI.Script
                 }
             }
 
-            // If we dont' use mnemonic, set formatFlag to NoPrefix as this will show ampersand.
+            // If we don't use mnemonic, set formatFlag to NoPrefix as this will show ampersand.
             if (!UseMnemonic)
             {
                 _textFormatFlags = _textFormatFlags | TextFormatFlags.NoPrefix;
@@ -403,7 +403,7 @@ namespace GitUI.Script
 
         private void PaintArrow(Graphics g, Rectangle dropDownRect)
         {
-            var middle = new Point(Convert.ToInt32(dropDownRect.Left + (dropDownRect.Width / 2)), Convert.ToInt32(dropDownRect.Top + (dropDownRect.Height / 2)));
+            Point middle = new(Convert.ToInt32(dropDownRect.Left + (dropDownRect.Width / 2)), Convert.ToInt32(dropDownRect.Top + (dropDownRect.Height / 2)));
 
             // if the width is odd - favor pushing it over one pixel right.
             middle.X += dropDownRect.Width % 2;

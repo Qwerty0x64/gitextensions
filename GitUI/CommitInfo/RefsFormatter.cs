@@ -54,13 +54,13 @@ namespace GitUI.CommitInfo
 
             IEnumerable<string> FormatTags(IEnumerable<string> selectedTags)
             {
-                return selectedTags.Select(s => showAsLinks ? _linkFactory.CreateTagLink(s) : WebUtility.HtmlEncode(s));
+                return selectedTags.Select(s => showAsLinks ? _linkFactory.CreateTagLink(s ?? string.Empty) : WebUtility.HtmlEncode(s));
             }
         }
 
         private (IEnumerable<string> formattedBranches, bool truncated) FilterAndFormatBranches(IEnumerable<string> branches, bool showAsLinks, bool limit)
         {
-            var formattedBranches = new List<string>();
+            List<string> formattedBranches = new();
             bool truncated = false;
 
             const string remotesPrefix = "remotes/";
@@ -77,7 +77,7 @@ namespace GitUI.CommitInfo
 
             foreach (var branch in branches)
             {
-                string noPrefixBranch = branch;
+                string noPrefixBranch = branch ?? string.Empty;
                 bool branchIsLocal;
                 if (getLocal && getRemote)
                 {

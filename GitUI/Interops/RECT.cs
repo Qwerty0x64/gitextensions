@@ -32,14 +32,14 @@ namespace System
                 => Rectangle.FromLTRB(r.left, r.top, r.right, r.bottom);
 
             public static implicit operator RECT(Rectangle r)
-                => new RECT(r);
+                => new(r);
 
             public Size Size
-                => new Size(right - left, bottom - top);
+                => new(right - left, bottom - top);
         }
 
         /// <summary>
-        /// Theming interop requires RECT to be class
+        /// Theming interop requires RECT to be class.
         /// </summary>
         [StructLayout(LayoutKind.Sequential)]
         public class RECTCLS

@@ -33,7 +33,7 @@ namespace ResourceManager
         private const string InternalScheme = "gitext";
         private const string ShowAll = "showall";
 
-        private readonly ConcurrentDictionary<string, string> _linksMap = new ConcurrentDictionary<string, string>();
+        private readonly ConcurrentDictionary<string, string> _linksMap = new();
 
         public void Clear()
         {
@@ -48,7 +48,7 @@ namespace ResourceManager
         private string AddLink(string? caption, string uri)
         {
             string htmlUri = WebUtility.HtmlEncode(uri);
-            string rtfLinkText = caption + "#" + htmlUri;
+            string rtfLinkText = caption;
             _linksMap[rtfLinkText] = htmlUri;
 
             string htmlLink = "<a href=" + htmlUri.Quote("'") + ">" + WebUtility.HtmlEncode(caption) + "</a>";
@@ -132,10 +132,10 @@ namespace ResourceManager
                 return;
             }
 
-            using var process = new Process
+            using Process process = new()
             {
                 EnableRaisingEvents = false,
-                StartInfo = { FileName = uri.AbsoluteUri }
+                StartInfo = { FileName = uri.AbsoluteUri, UseShellExecute = true },
             };
             process.Start();
         }
